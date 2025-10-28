@@ -1,0 +1,50 @@
+{
+  "name": "erikwang2013/aetherupload-webman",
+  "description": "erikwang2013/aetherupload-webman is a aetherupload plugin that is compatible with webman. Mainly suitable for distributed deployment, used to adapt to webman, with simple and fast installation.",
+  "type": "library",
+  "license": "MIT",
+  "minimum-stability": "dev",
+  "authors": [
+    {
+      "name": "erik",
+      "email": "erik@erik.xyz",
+      "homepage": "https://erik.xyz",
+      "role": "Developer"
+    }
+  ],
+  "keywords": [
+    "erik",
+    "erikwang2013",
+    "aetherupload",
+    "webman",
+    "大文件",
+    "large",
+    "upload"
+  ],
+  "support": {
+    "email": "erik@erik.xyz",
+    "issues": "https://github.com/erikwang2013/aetherupload-webman/issues",
+    "source": "https://github.com/erikwang2013/aetherupload-webman"
+  },
+  "require": {
+    "php": ">=7.2",
+    "webman/event": "*",
+    "symfony/translation": "*",
+    "webman/console": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "AetherUpload\\": "src"
+    },
+    "files": [ "src/helpers.php" ]
+  },
+  "repositories": {
+    "packagist": {
+      "type": "composer",
+      "url": "https://repo.packagist.org/"
+    }
+  },
+  "suggest": {
+    "predis/predis": "Needed to support instant completion"
+  }
+}
