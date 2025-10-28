@@ -33,7 +33,7 @@
   
 1 在浏览器访问`http://域名/aetherupload`可到达示例页面  
 
-*提示：更改相关配置选项请编辑`config/plugin/peinhu/aetherupload-webman/app.php`。*  
+*提示：更改相关配置选项请编辑`config/plugin/erikwang2013/aetherupload-webman/app.php`。*  
 
 # 使用  
 **文件上传**  

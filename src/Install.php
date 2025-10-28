@@ -9,7 +9,7 @@ class Install
      * @var array
      */
     protected static $pathRelation = array (
-      '../config' => 'config/plugin/peinhu/aetherupload-webman',
+      '../config' => 'config/plugin/erikwang2013/aetherupload-webman',
       '../assets' => 'public/vendor/aetherupload/js',
       '../commands' => 'app/command',
       '../translations' => 'resource/translations/aetherupload',

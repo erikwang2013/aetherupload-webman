@@ -27,7 +27,7 @@ class ConfigMapper
     private $extra_mime_types;
     private $event_before_upload_complete;
     private $event_upload_complete;
-    const PREFIX = 'plugin.peinhu.aetherupload-webman.app.';
+    const PREFIX = 'plugin.erikwang2013.aetherupload-webman.app.';
 
     private function __construct()
     {
