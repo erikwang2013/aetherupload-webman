@@ -29,7 +29,7 @@
 
 
 # 安装 
-0 在终端内切换到你的webman项目根目录，执行`composer require peinhu/aetherupload-webman ^1.0`   
+0 在终端内切换到你的webman项目根目录，执行`composer require erikwang2013/aetherupload-webman   
   
 1 在浏览器访问`http://域名/aetherupload`可到达示例页面  
 
@@ -164,9 +164,3 @@
 AetherUpload在上传前使用白名单+黑名单的形式进行文件后缀名过滤，上传后再检查文件的Mime-Type类型。白名单直接限制了保存文件扩展名，黑名单默认屏蔽了常见的可执行文件扩展名，来阻止上传恶意文件，安全起见白名单一栏不应留空。  
 
 虽然做了诸多安全工作，但恶意文件上传是防不胜防的，建议正确设置上传目录权限，确保相关程序对资源文件没有执行权限。
-
-# 更新日志  
-详见[CHANGELOG.md](https://github.com/peinhu/AetherUpload-Webman/blob/master/CHANGELOG.md)  
-
-# 许可证
-使用GPLv2许可证, 查看[LICENCE](https://github.com/peinhu/AetherUpload-Webman/blob/master/LICENSE)文件以获得更多信息。  
