@@ -10,7 +10,7 @@ class Util
      */
     public static function generateTempName()
     {
-        return time() . mt_rand(100000, 999999);
+        return bin2hex(random_bytes(8));
     }
 
     public static function getFileName($baseName, $ext)
@@ -63,7 +63,12 @@ class Util
 
             $resource = new Resource($params->group, ConfigMapper::get('group_dir'), $params->groupSubDir, $params->resourceName);
 
-            return $resource->delete();
+            $resource->delete();
+
+            // 删除文件后联动清理秒传记录，避免返回已删除文件的 savedPath
+            self::deleteRedisSavedPath($savedPath);
+
+            return true;
 
         } catch ( \Exception $e ) {
 

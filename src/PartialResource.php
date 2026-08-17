@@ -41,7 +41,12 @@ class PartialResource
     {
         $handle = @fopen($chunkRealPath, 'rb');
 
+        if ( $handle === false ) {
+            throw new \Exception(trans('upload_error'));
+        }
+
         if ( file_put_contents($this->realPath, $handle, FILE_APPEND) === false ) {
+            fclose($handle);
             throw new \Exception(trans('write_resource_fail'));
         }
 

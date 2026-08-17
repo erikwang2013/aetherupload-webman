@@ -24,6 +24,7 @@ class AetherUploadBuildRedisHashes extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $savedPathArr = [];
+        $totalCount = 0;
         $output->writeln('Start rebuilding the correlations...');
         try {
 
@@ -42,15 +43,22 @@ class AetherUploadBuildRedisHashes extends Command
                             continue;
                         }
 
-                        $savedPathArr[RedisSavedPath::getKey($groupName, pathinfo($fileName, PATHINFO_FILENAME))] = SavedPathResolver::encode($group['group_dir'], basename($subDirName), basename($fileName));
+                        $savedPathArr[RedisSavedPath::getKey($groupName, pathinfo($fileName, PATHINFO_FILENAME))] = SavedPathResolver::encode($groupName, basename($subDirName), basename($fileName));
+                        $totalCount++;
 
+                        if ( count($savedPathArr) >= 1000 ) {
+                            RedisSavedPath::setMulti($savedPathArr);
+                            $savedPathArr = [];
+                        }
                     }
                 }
             }
 
-            RedisSavedPath::setMulti($savedPathArr);
+            if ( ! empty($savedPathArr) ) {
+                RedisSavedPath::setMulti($savedPathArr);
+            }
 
-            $output->writeln(count($savedPathArr) . ' items have been set in Redis.');
+            $output->writeln($totalCount . ' items have been set in Redis.');
             $output->writeln('Done.');
         } catch ( \Exception $e ) {
 

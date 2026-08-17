@@ -16,13 +16,6 @@ class Header
         $this->realPath = $this->getRealPath();
     }
 
-    public function create()
-    {
-        if ( file_put_contents($this->realPath, 0, false) === false ) {
-            throw new \Exception(trans('create_header_fail'));
-        }
-    }
-
     public function write($content)
     {
         if ( file_put_contents($this->realPath, $content, false) === false ) {
@@ -41,7 +34,7 @@ class Header
 
     public function delete()
     {
-        if ( unlink($this->realPath) === false ) {
+        if ( @unlink($this->realPath) === false ) {
             throw new \Exception(trans('delete_header_fail'));
         }
     }

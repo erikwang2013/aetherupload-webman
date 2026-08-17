@@ -60,10 +60,18 @@ class UploadController
             $partialResource->filterByExtension($resourceExt);
 
             // determine if this upload meets the condition of instant completion
-            if ( ConfigMapper::get('instant_completion') === true && ! empty($resourceHash) && RedisSavedPath::exists($savedPathKey = RedisSavedPath::getKey($group, $resourceHash)) === true ) {
-                $result['savedPath'] = RedisSavedPath::get($savedPathKey);
+            if ( ConfigMapper::get('instant_completion') === true && ! empty($resourceHash) ) {
+                try {
+                    $savedPath = RedisSavedPath::get($savedPathKey = RedisSavedPath::getKey($group, $resourceHash));
+                } catch ( \Exception $e ) {
+                    $savedPath = null;
+                }
 
-                return Responser::returnResult($result);
+                if ( ! empty($savedPath) ) {
+                    $result['savedPath'] = $savedPath;
+
+                    return Responser::returnResult($result);
+                }
             }
 
             $partialResource->create();
@@ -72,7 +80,9 @@ class UploadController
 
         } catch ( \Exception $e ) {
 
-            return Responser::reportError($result, $e->getMessage());
+            $knownMessages = [trans('invalid_operation'), trans('invalid_resource_size'), trans('invalid_resource_type'), trans('create_subfolder_fail'), trans('create_resource_fail')];
+
+            return Responser::reportError($result, in_array($e->getMessage(), $knownMessages, true) ? $e->getMessage() : trans('upload_error'));
         }
 
         return Responser::returnResult($result);
@@ -110,27 +120,61 @@ class UploadController
         $savedPathKey = RedisSavedPath::getKey($group, $resourceHash);
         $partialResource = null;
 
+        // security: whitelist client-controlled path components to prevent directory traversal
+        $safePathComponentPattern = '/^[a-zA-Z0-9_\-]+$/';
+        foreach ( ['group_subdir' => $groupSubDir, 'resource_temp_basename' => $resourceTempBaseName, 'resource_ext' => $resourceExt] as $name => $value ) {
+            if ( preg_match($safePathComponentPattern, (string)$value) !== 1 ) {
+                return Responser::reportError($result, trans('invalid_resource_params'));
+            }
+        }
+
+        // security: cap the total number of chunks to avoid resource-exhaustion flooding
+        if ( (int)$chunkTotalCount > 10000 ) {
+            return Responser::reportError($result, trans('invalid_resource_params'));
+        }
+
         try{
 
             ConfigMapper::applyGroupConfig($group);
 
             $partialResource = new PartialResource($resourceTempBaseName, $resourceExt, $groupSubDir);
 
+            // security: resource_ext is client-controlled, apply the same extension filter as preprocess
+            $partialResource->filterByExtension($resourceExt);
+
+            // when the whitelist is empty, filterByExtension only consults the blacklist,
+            // so additionally hard-reject clearly executable extensions
+            if ( empty(ConfigMapper::get('resource_extensions')) && in_array($resourceExt, ['php', 'phtml', 'php3', 'php4', 'php5', 'phps', 'pht', 'shtml', 'shtm', 'jsp', 'asp', 'aspx', 'cgi', 'sh'], true) ) {
+                throw new \Exception(trans('invalid_resource_type'));
+            }
+
+            // determine if this upload meets the condition of instant completion,
+            // checked before exists() so re-sending the final chunk after completion is idempotent
+            if ( ConfigMapper::get('instant_completion') === true && ! empty($resourceHash) ) {
+                try {
+                    $savedPath = RedisSavedPath::get($savedPathKey);
+                } catch ( \Exception $e ) {
+                    $savedPath = null;
+                }
+
+                if ( ! empty($savedPath) ) {
+                    if ( $partialResource->exists() ) {
+                        @unlink($partialResource->realPath);
+
+                        if ( $partialResource->header->exists() ) {
+                            unset($partialResource->chunkIndex);
+                        }
+                    }
+
+                    $result['savedPath'] = $savedPath;
+
+                    return Responser::returnResult($result);
+                }
+            }
+
             // do a check to prevent security intrusions
             if ( $partialResource->exists() === false ) {
                 throw new \Exception(trans('invalid_operation'));
-            }
-
-            // determine if this upload meets the condition of instant completion
-            if ( ConfigMapper::get('instant_completion') === true && ! empty($resourceHash) && RedisSavedPath::exists($savedPathKey) === true ) {
-
-                unlink($partialResource->realPath);
-
-                unset($partialResource->chunkIndex);
-
-                $result['savedPath'] = RedisSavedPath::get($savedPathKey);
-
-                return Responser::returnResult($result);
             }
 
             if ( $chunk->isValid() === false ) {
@@ -138,8 +182,14 @@ class UploadController
             }
 
             // validate the data in header file to avoid the errors when network issue occurs
-            if ( (int)($partialResource->chunkIndex) !== (int)$chunkIndex - 1 ) {
+            $lastChunkIndex = (int)($partialResource->chunkIndex);
+            if ( (int)$chunkIndex <= $lastChunkIndex ) {
+                // duplicate chunk, already saved - return success idempotently
                 return Responser::returnResult($result);
+            }
+            if ( (int)$chunkIndex > $lastChunkIndex + 1 ) {
+                // a chunk is missing in between, report the error instead of silently returning success
+                return Responser::reportError($result, trans('upload_error'));
             }
 
             $partialResource->append($chunk->getRealPath());
@@ -147,7 +197,7 @@ class UploadController
             $partialResource->chunkIndex = $chunkIndex;
 
             // determine if the resource file is completed
-            if ( $chunkIndex === $chunkTotalCount ) {
+            if ( (int)$chunkIndex === (int)$chunkTotalCount ) {
 
                 $partialResource->checkSize();
 
@@ -184,11 +234,17 @@ class UploadController
 
         } catch ( \Exception $e ) {
 
-            @unlink($partialResource->realPath);
+            if ( $partialResource !== null ) {
+                @unlink($partialResource->realPath);
 
-            unset($partialResource->chunkIndex);
+                if ( $partialResource->header->exists() ) {
+                    unset($partialResource->chunkIndex);
+                }
+            }
 
-            return Responser::reportError($result, $e->getMessage());
+            $knownMessages = [trans('invalid_operation'), trans('upload_error'), trans('invalid_resource_size'), trans('invalid_resource_type'), trans('missing_mimetype'), trans('write_resource_fail'), trans('rename_resource_fail'), trans('delete_resource_fail'), trans('create_header_fail'), trans('write_header_fail'), trans('read_header_fail'), trans('delete_header_fail')];
+
+            return Responser::reportError($result, in_array($e->getMessage(), $knownMessages, true) ? $e->getMessage() : trans('upload_error'));
         }
 
         return Responser::returnResult($result);

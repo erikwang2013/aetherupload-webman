@@ -7,6 +7,8 @@ use \Webman\Http\Request;
 class ResourceController
 {
 
+    const INLINE_BLOCKED_EXTENSIONS = ['svg', 'svgz', 'html', 'htm', 'xml', 'xhtml', 'xht', 'xsl', 'js', 'mjs'];
+
     public function display(Request $request, $uri)
     {
 
@@ -27,7 +29,13 @@ class ResourceController
             return response('display fail', 404);
         }
 
-        return response()->file($resource->realPath);
+        $response = response()->file($resource->realPath);
+
+        if ( in_array(strtolower(pathinfo($resource->name, PATHINFO_EXTENSION)), self::INLINE_BLOCKED_EXTENSIONS, true) ) {
+            $response = response()->download($resource->realPath, $resource->name);
+        }
+
+        return $response->withHeader('X-Content-Type-Options', 'nosniff');
     }
 
     public function download(Request $request, $uri, $newName = null)
@@ -52,7 +60,7 @@ class ResourceController
             return response('download fail', 404);
         }
 
-        return response()->download($resource->realPath,$newResource);
+        return response()->download($resource->realPath, $newResource)->withHeader('X-Content-Type-Options', 'nosniff');
     }
 
 

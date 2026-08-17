@@ -16,7 +16,6 @@ class ConfigMapper
     private $middleware_uploading;
     private $middleware_display;
     private $middleware_download;
-    private $header_storage_disk;
     private $forbidden_extensions;
     private $instant_completion;
     private $route_preprocess;
@@ -48,7 +47,6 @@ class ConfigMapper
         $this->root_dir = config(self::PREFIX.'root_dir');
         $this->chunk_size = config(self::PREFIX.'chunk_size');
         $this->resource_subdir_rule = config(self::PREFIX.'resource_subdir_rule');
-        $this->header_storage_disk = config(self::PREFIX.'header_storage_disk');
         $this->forbidden_extensions = config(self::PREFIX.'forbidden_extensions');
         $this->middleware_preprocess = config(self::PREFIX.'middleware_preprocess');
         $this->middleware_uploading = config(self::PREFIX.'middleware_uploading');

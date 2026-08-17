@@ -7,6 +7,14 @@ use support\Redis;
 class RedisSavedPath
 {
 
+    // 秒传记录过期时间（秒，7 天），可用 config 键 resource_redis_expire 覆盖
+    const EXPIRE_SECONDS = 604800;
+
+    public static function ttl()
+    {
+        return (int)config(ConfigMapper::PREFIX.'resource_redis_expire', self::EXPIRE_SECONDS);
+    }
+
     public static function exists($key)
     {
         $result = Redis::hexists('aetherupload_resource', $key);
@@ -39,12 +47,16 @@ class RedisSavedPath
             throw new \Exception('write error');
         }
 
+        Redis::expire('aetherupload_resource', self::ttl());
+
         return true;
     }
 
     public static function setMulti($keyArr)
     {
         Redis::hmset('aetherupload_resource', $keyArr);
+
+        Redis::expire('aetherupload_resource', self::ttl());
 
         return true;
     }

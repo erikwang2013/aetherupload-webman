@@ -12,7 +12,19 @@ class SavedPathResolver
 
     public static function decode($savedPath)
     {
-        list($group, $groupSubDir, $name) = explode('_', $savedPath);
+        $parts = explode('_', $savedPath, 3);
+
+        if ( count($parts) !== 3 ) {
+            throw new \Exception(trans('invalid_operation'));
+        }
+
+        foreach ( $parts as $field ) {
+            if ( preg_match('/^[a-zA-Z0-9_\-][a-zA-Z0-9_\-\.]*$/', $field) !== 1 ) {
+                throw new \Exception(trans('invalid_operation'));
+            }
+        }
+
+        list($group, $groupSubDir, $name) = $parts;
 
         return (object)[
             'group'        => $group,

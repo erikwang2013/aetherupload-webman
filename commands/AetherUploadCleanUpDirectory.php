@@ -106,36 +106,42 @@ class AetherUploadCleanUpDirectory extends Command
 
     public function getDirs($path)
     {
-        $arr = array();
-        $data = scandir($path);
-        foreach ($data as $value){
-            if($value != '.' && $value != '..'){
-                if(is_dir($path.DIRECTORY_SEPARATOR.$value)){
-                    $arr[] = $path.DIRECTORY_SEPARATOR.$value;
-                }
+        $dir = opendir($path);
+
+        if ( $dir === false ) {
+            return;
+        }
+
+        while ( ($value = readdir($dir)) !== false ) {
+            if ( $value != '.' && $value != '..' && is_dir($path.DIRECTORY_SEPARATOR.$value) ) {
+                yield $path.DIRECTORY_SEPARATOR.$value;
             }
         }
-        return $arr;
+
+        closedir($dir);
     }
 
     public function getFiles($path)
     {
-        $arr = array();
-        $data = scandir($path);
-        foreach ($data as $value){
-            if($value != '.' && $value != '..'){
-                if(is_file($path.DIRECTORY_SEPARATOR.$value)){
-                    $arr[] = $path.DIRECTORY_SEPARATOR.$value;
-                }
+        $dir = opendir($path);
+
+        if ( $dir === false ) {
+            return;
+        }
+
+        while ( ($value = readdir($dir)) !== false ) {
+            if ( $value != '.' && $value != '..' && is_file($path.DIRECTORY_SEPARATOR.$value) ) {
+                yield $path.DIRECTORY_SEPARATOR.$value;
             }
         }
-        return $arr;
+
+        closedir($dir);
     }
 
     public function deleteFiles($arr)
     {
         foreach ($arr as $file){
-            if(! unlink($file)){
+            if ( file_exists($file) === true && unlink($file) === false ) {
                 throw new \Exception('fail to delete '.$file);
             }
         }
