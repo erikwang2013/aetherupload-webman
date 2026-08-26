@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Incremental release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version and changelog
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Latest release tag; fall back to v1.0.0 if none exists yet.
+          LATEST_TAG=$(gh api "repos/${{ github.repository }}/releases/latest" --jq '.tag_name' 2>/dev/null) || LATEST_TAG="v1.0.0"
+
+          # Parse vX.Y.Z (tolerate missing 'v' prefix) and increment patch.
+          MAJOR=$(echo "$LATEST_TAG" | sed -E 's/^v?([0-9]+).*/\1/')
+          MINOR=$(echo "$LATEST_TAG" | sed -E 's/^v?[0-9]+\.([0-9]+).*/\1/')
+          PATCH=$(echo "$LATEST_TAG" | sed -E 's/^v?[0-9]+\.[0-9]+\.([0-9]+).*/\1/')
+          if [[ ! "$MAJOR" =~ ^[0-9]+$ || ! "$MINOR" =~ ^[0-9]+$ || ! "$PATCH" =~ ^[0-9]+$ ]]; then
+            MAJOR=1; MINOR=0; PATCH=0
+          fi
+          NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+
+          # Idempotency: if the computed tag already exists, skip.
+          if git rev-parse -q --verify "refs/tags/${NEW_TAG}" >/dev/null; then
+            echo "Tag ${NEW_TAG} already exists, skipping." >>"$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Changelog: commits from latest tag to HEAD, or all commits on first release.
+          if git rev-parse -q --verify "refs/tags/${LATEST_TAG}" >/dev/null; then
+            CHANGELOG=$(git log --oneline --no-merges "${LATEST_TAG}..HEAD")
+          else
+            CHANGELOG=$(git log --oneline --no-merges)
+          fi
+          [ -z "$CHANGELOG" ] && CHANGELOG="No changelog for this release."
+
+          echo "skip=false" >>"$GITHUB_OUTPUT"
+          echo "tag=${NEW_TAG}" >>"$GITHUB_OUTPUT"
+          echo "changelog<<EOF" >>"$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >>"$GITHUB_OUTPUT"
+          echo "EOF" >>"$GITHUB_OUTPUT"
+
+      - name: Create release and tag
+        if: steps.version.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes "${{ steps.version.outputs.changelog }}"

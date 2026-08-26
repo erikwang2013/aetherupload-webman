@@ -152,12 +152,12 @@ class PartialResource
 
     public function getCompletePath($name)
     {
-        return ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $this->groupDir . DIRECTORY_SEPARATOR . $this->groupSubDir . DIRECTORY_SEPARATOR . $name;
+        return base_path() . DIRECTORY_SEPARATOR . ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $this->groupDir . DIRECTORY_SEPARATOR . $this->groupSubDir . DIRECTORY_SEPARATOR . $name;
     }
 
     public function getGroupSubDirPath()
     {
-        return ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $this->groupDir . DIRECTORY_SEPARATOR . $this->groupSubDir;
+        return base_path() . DIRECTORY_SEPARATOR . ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $this->groupDir . DIRECTORY_SEPARATOR . $this->groupSubDir;
     }
 
     public function __set($property, $value)

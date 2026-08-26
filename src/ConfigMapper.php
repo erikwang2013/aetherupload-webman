@@ -86,7 +86,13 @@ class ConfigMapper
 
     public static function set($property, $value)
     {
-        self::instance()->{$property} = $value;
+        $instance = self::instance();
+
+        if ( ! property_exists($instance, $property) ) {
+            throw new \Exception('invalid property');
+        }
+
+        $instance->{$property} = $value;
     }
 
     public static function __callStatic($name, $arguments)

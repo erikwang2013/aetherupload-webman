@@ -814,7 +814,9 @@ class MimeType
      */
     public static function search($mimeType)
     {
-        return array_search($mimeType, array_merge(self::$mimes,ConfigMapper::get('extra_mime_types'))) ?: null;
+        $result = array_search($mimeType, array_merge(self::$mimes, ConfigMapper::get('extra_mime_types')));
+
+        return $result === false ? null : $result;
     }
 
     /**

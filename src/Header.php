@@ -18,14 +18,14 @@ class Header
 
     public function write($content)
     {
-        if ( file_put_contents($this->realPath, $content, false) === false ) {
+        if ( @file_put_contents($this->realPath, $content, false) === false ) {
             throw new \Exception(trans('write_header_fail'));
         }
     }
 
     public function read()
     {
-        if ( ($content = file_get_contents($this->realPath)) === false ) {
+        if ( ($content = @file_get_contents($this->realPath)) === false ) {
             throw new \Exception(trans('read_header_fail'));
         }
 

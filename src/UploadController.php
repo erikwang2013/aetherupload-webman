@@ -10,8 +10,9 @@ class UploadController
 
     public function __construct()
     {
-        Translation::addResource('phpfile',config('translation')['path'].DIRECTORY_SEPARATOR.'aetherupload'.DIRECTORY_SEPARATOR.'zh'.DIRECTORY_SEPARATOR.'messages.php','zh');
-        Translation::addResource('phpfile',config('translation')['path'].DIRECTORY_SEPARATOR.'aetherupload'.DIRECTORY_SEPARATOR.'en'.DIRECTORY_SEPARATOR.'messages.php','en');
+        $translationPath = config('translation')['path'] ?? base_path() . DIRECTORY_SEPARATOR . 'resource' . DIRECTORY_SEPARATOR . 'translations';
+        Translation::addResource('phpfile',$translationPath.DIRECTORY_SEPARATOR.'aetherupload'.DIRECTORY_SEPARATOR.'zh'.DIRECTORY_SEPARATOR.'messages.php','zh');
+        Translation::addResource('phpfile',$translationPath.DIRECTORY_SEPARATOR.'aetherupload'.DIRECTORY_SEPARATOR.'en'.DIRECTORY_SEPARATOR.'messages.php','en');
     }
 
     /**
@@ -38,6 +39,8 @@ class UploadController
         ])){
             return Responser::reportError($result, trans('invalid_resource_params'));
         }
+
+        $partialResource = null;
 
         try {
 
@@ -80,6 +83,15 @@ class UploadController
 
         } catch ( \Exception $e ) {
 
+            // cleanup partial files created before the failure to avoid orphans
+            if ( $partialResource !== null ) {
+                @unlink($partialResource->realPath);
+
+                if ( $partialResource->header->exists() ) {
+                    unset($partialResource->chunkIndex);
+                }
+            }
+
             $knownMessages = [trans('invalid_operation'), trans('invalid_resource_size'), trans('invalid_resource_type'), trans('create_subfolder_fail'), trans('create_resource_fail')];
 
             return Responser::reportError($result, in_array($e->getMessage(), $knownMessages, true) ? $e->getMessage() : trans('upload_error'));
@@ -117,7 +129,6 @@ class UploadController
         $groupSubDir = request()->input('group_subdir');
         $resourceHash = request()->input('resource_hash');
         $group = request()->input('group');
-        $savedPathKey = RedisSavedPath::getKey($group, $resourceHash);
         $partialResource = null;
 
         // security: whitelist client-controlled path components to prevent directory traversal
@@ -136,6 +147,8 @@ class UploadController
         try{
 
             ConfigMapper::applyGroupConfig($group);
+
+            $savedPathKey = RedisSavedPath::getKey($group, $resourceHash);
 
             $partialResource = new PartialResource($resourceTempBaseName, $resourceExt, $groupSubDir);
 
@@ -177,7 +190,7 @@ class UploadController
                 throw new \Exception(trans('invalid_operation'));
             }
 
-            if ( $chunk->isValid() === false ) {
+            if ( ! $chunk || $chunk->isValid() === false ) {
                 throw new \Exception(trans('upload_error'));
             }
 
@@ -191,6 +204,9 @@ class UploadController
                 // a chunk is missing in between, report the error instead of silently returning success
                 return Responser::reportError($result, trans('upload_error'));
             }
+
+            // security: enforce the size limit incrementally, not only at completion
+            $partialResource->filterBySize(filesize($partialResource->realPath) + filesize($chunk->getRealPath()));
 
             $partialResource->append($chunk->getRealPath());
 

@@ -27,7 +27,7 @@
     "source": "https://github.com/erikwang2013/aetherupload-webman"
   },
   "require": {
-    "php": ">=7.2",
+    "php": "^8.0",
     "webman/event": "*",
     "symfony/translation": "*",
     "webman/console": "*"
@@ -37,6 +37,15 @@
       "AetherUpload\\": "src"
     },
     "files": [ "src/helpers.php" ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "AetherUpload\\Tests\\": "tests/"
+    },
+    "classmap": [ "tests/Stubs" ]
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.6 || ^10.5"
   },
   "repositories": {
     "packagist": {

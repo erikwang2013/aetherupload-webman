@@ -1,1 +1,6 @@
 .DS_Store
+/vendor/
+/.phpunit.cache/
+/.phpunit.result.cache
+/composer.lock
+/tests/report/coverage/
