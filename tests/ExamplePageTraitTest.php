@@ -2,7 +2,6 @@
 
 namespace AetherUpload\Tests;
 
-use AetherUpload\ConfigMapper;
 use AetherUpload\Tests\Support\TestState;
 use PHPUnit\Framework\TestCase;
 use Webman\Http\Request;
@@ -12,44 +11,13 @@ class ExamplePageTraitTest extends TestCase
     protected function setUp(): void
     {
         TestState::reset();
-        $this->normalizeConfig();
-        $this->resetConfigMapper();
+        TestState::normalizeConfig();
+        TestState::resetConfigMapper();
     }
 
     protected function tearDown(): void
     {
         remove_dir(TestState::$basePath);
-    }
-
-    /**
-     * TestState::set() stores the plugin config as a nested tree under 'plugin',
-     * while defaultConfig uses one flat dotted key that get() cannot resolve.
-     * Move the flat key into the nested shape so config()/TestState::get() work.
-     */
-    private function normalizeConfig(): void
-    {
-        $flat = 'plugin.erikwang2013.aetherupload-webman.app';
-        if ( ! isset(TestState::$config[$flat]) ) {
-            return;
-        }
-        $node = &TestState::$config;
-        foreach ( explode('.', $flat) as $segment ) {
-            if ( ! is_array($node) ) {
-                $node = [];
-            }
-            $node = &$node[$segment];
-        }
-        $node = TestState::$config[$flat];
-        unset(TestState::$config[$flat]);
-    }
-
-    private function resetConfigMapper(): void
-    {
-        $ref = new \ReflectionClass(ConfigMapper::class);
-        // setAccessible() required on PHP 8.0 for non-public properties (no-op on 8.1+)
-        $property = $ref->getProperty('_instance');
-        $property->setAccessible(true);
-        $property->setValue(null, null);
     }
 
     private function page(): object

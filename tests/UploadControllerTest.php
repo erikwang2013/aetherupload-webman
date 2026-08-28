@@ -2,7 +2,6 @@
 
 namespace AetherUpload\Tests;
 
-use AetherUpload\ConfigMapper;
 use AetherUpload\Tests\Support\TestState;
 use AetherUpload\UploadController;
 use PHPUnit\Framework\TestCase;
@@ -19,8 +18,8 @@ class UploadControllerTest extends TestCase
     protected function setUp(): void
     {
         TestState::reset();
-        $this->normalizeConfig();
-        $this->resetConfigMapper();
+        TestState::normalizeConfig();
+        TestState::resetConfigMapper();
         mkdir(TestState::$basePath, 0777, true);
     }
 
@@ -29,48 +28,17 @@ class UploadControllerTest extends TestCase
         remove_dir(TestState::$basePath);
     }
 
-    /**
-     * TestState::set() stores the plugin config as a nested tree under 'plugin',
-     * while defaultConfig uses one flat dotted key that get() cannot resolve.
-     * Move the flat key into the nested shape so config()/TestState::get() work.
-     */
-    private function normalizeConfig(): void
-    {
-        $flat = self::PREFIX;
-        if ( ! isset(TestState::$config[$flat]) ) {
-            return;
-        }
-        $node = &TestState::$config;
-        foreach ( explode('.', $flat) as $segment ) {
-            if ( ! is_array($node) ) {
-                $node = [];
-            }
-            $node = &$node[$segment];
-        }
-        $node = TestState::$config[$flat];
-        unset(TestState::$config[$flat]);
-    }
-
-    private function resetConfigMapper(): void
-    {
-        $ref = new \ReflectionClass(ConfigMapper::class);
-        // setAccessible() required on PHP 8.0 for non-public properties (no-op on 8.1+)
-        $property = $ref->getProperty('_instance');
-        $property->setAccessible(true);
-        $property->setValue(null, null);
-    }
-
     private function setInstantCompletion(bool $enabled): void
     {
-        TestState::set(self::PREFIX . '.instant_completion', $enabled);
-        $this->resetConfigMapper();
+        TestState::set(TestState::PREFIX . '.instant_completion', $enabled);
+        TestState::resetConfigMapper();
     }
 
     // ---------- helpers ----------
 
     private function uploadDir(): string
     {
-        return TestState::$basePath . '/' . self::ROOT_DIR . '/' . self::GROUP_DIR . '/' . self::SUB_DIR;
+        return TestState::dir(self::ROOT_DIR, self::GROUP_DIR, self::SUB_DIR);
     }
 
     private function headerDir(): string

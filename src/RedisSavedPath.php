@@ -81,7 +81,7 @@ class RedisSavedPath
 
     public static function getKey($group, $hash)
     {
-        if ( $hash !== '' && preg_match('/^[a-zA-Z0-9_\-]{1,64}$/', $hash) !== 1 ) {
+        if ( Util::isSafePathComponent($hash, false, 64) === false ) {
             throw new \Exception(trans('invalid_operation'));
         }
 

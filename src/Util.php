@@ -18,6 +18,17 @@ class Util
         return $baseName . '.' . $ext;
     }
 
+    public static function isSafePathComponent($value, $allowDot = false, $maxLength = null)
+    {
+        $pattern = $allowDot ? '/^[a-zA-Z0-9_\-][a-zA-Z0-9_\-\.]*$/' : '/^[a-zA-Z0-9_\-]+$/';
+
+        if ( $value === '' || preg_match($pattern, (string)$value) !== 1 ) {
+            return false;
+        }
+
+        return $maxLength === null || strlen((string)$value) <= $maxLength;
+    }
+
     public static function generateSubDirName()
     {
         switch ( ConfigMapper::get('resource_subdir_rule') ) {

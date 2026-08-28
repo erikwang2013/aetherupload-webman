@@ -19,7 +19,7 @@ class SavedPathResolver
         }
 
         foreach ( $parts as $field ) {
-            if ( preg_match('/^[a-zA-Z0-9_\-][a-zA-Z0-9_\-\.]*$/', $field) !== 1 ) {
+            if ( Util::isSafePathComponent($field, true) === false ) {
                 throw new \Exception(trans('invalid_operation'));
             }
         }

@@ -8,6 +8,8 @@ namespace AetherUpload\Tests\Support;
  */
 final class TestState
 {
+    public const PREFIX = 'plugin.erikwang2013.aetherupload-webman.app';
+
     /** @var array full nested config tree, keyed by dotted paths */
     public static array $config = [];
 
@@ -75,6 +77,42 @@ final class TestState
     {
         self::$redisHash = [];
         self::$redisExpireCalls = [];
+    }
+
+    /**
+     * TestState::set() stores the plugin config as a nested tree under 'plugin',
+     * while defaultConfig uses one flat dotted key that get() cannot resolve.
+     * Move the flat key into the nested shape so config()/TestState::get() work.
+     */
+    public static function normalizeConfig(): void
+    {
+        $flat = self::PREFIX;
+        if ( ! isset(self::$config[$flat]) ) {
+            return;
+        }
+        $node = &self::$config;
+        foreach ( explode('.', $flat) as $segment ) {
+            if ( ! is_array($node) ) {
+                $node = [];
+            }
+            $node = &$node[$segment];
+        }
+        $node = self::$config[$flat];
+        unset(self::$config[$flat]);
+    }
+
+    public static function resetConfigMapper(): void
+    {
+        $ref = new \ReflectionClass(\AetherUpload\ConfigMapper::class);
+        // setAccessible() required on PHP 8.0 for non-public properties (no-op on 8.1+)
+        $property = $ref->getProperty('_instance');
+        $property->setAccessible(true);
+        $property->setValue(null, null);
+    }
+
+    public static function dir(string $rootDir, string $groupDir, string $subDir): string
+    {
+        return self::$basePath . '/' . $rootDir . '/' . $groupDir . '/' . $subDir;
     }
 
     public static function defaultConfig(): array

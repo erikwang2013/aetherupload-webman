@@ -8,6 +8,28 @@ class UploadController
 {
     use ExamplePageTrait,SimpleValidateTrait;
 
+    private const KNOWN_ERROR_MESSAGES = [
+        'invalid_operation',
+        'upload_error',
+        'invalid_resource_size',
+        'invalid_resource_type',
+        'missing_mimetype',
+        'write_resource_fail',
+        'rename_resource_fail',
+        'delete_resource_fail',
+        'create_header_fail',
+        'write_header_fail',
+        'read_header_fail',
+        'delete_header_fail',
+        'create_subfolder_fail',
+        'create_resource_fail',
+    ];
+
+    private function fail(array $result, \Exception $e)
+    {
+        return Responser::reportError($result, in_array($e->getMessage(), self::KNOWN_ERROR_MESSAGES, true) ? $e->getMessage() : trans('upload_error'));
+    }
+
     public function __construct()
     {
         $translationPath = config('translation')['path'] ?? base_path() . DIRECTORY_SEPARATOR . 'resource' . DIRECTORY_SEPARATOR . 'translations';
@@ -83,18 +105,11 @@ class UploadController
 
         } catch ( \Exception $e ) {
 
-            // cleanup partial files created before the failure to avoid orphans
             if ( $partialResource !== null ) {
-                @unlink($partialResource->realPath);
-
-                if ( $partialResource->header->exists() ) {
-                    unset($partialResource->chunkIndex);
-                }
+                $partialResource->cleanup();
             }
 
-            $knownMessages = [trans('invalid_operation'), trans('invalid_resource_size'), trans('invalid_resource_type'), trans('create_subfolder_fail'), trans('create_resource_fail')];
-
-            return Responser::reportError($result, in_array($e->getMessage(), $knownMessages, true) ? $e->getMessage() : trans('upload_error'));
+            return $this->fail($result, $e);
         }
 
         return Responser::returnResult($result);
@@ -132,9 +147,8 @@ class UploadController
         $partialResource = null;
 
         // security: whitelist client-controlled path components to prevent directory traversal
-        $safePathComponentPattern = '/^[a-zA-Z0-9_\-]+$/';
         foreach ( ['group_subdir' => $groupSubDir, 'resource_temp_basename' => $resourceTempBaseName, 'resource_ext' => $resourceExt] as $name => $value ) {
-            if ( preg_match($safePathComponentPattern, (string)$value) !== 1 ) {
+            if ( Util::isSafePathComponent($value) === false ) {
                 return Responser::reportError($result, trans('invalid_resource_params'));
             }
         }
@@ -156,7 +170,8 @@ class UploadController
             $partialResource->filterByExtension($resourceExt);
 
             // when the whitelist is empty, filterByExtension only consults the blacklist,
-            // so additionally hard-reject clearly executable extensions
+            // so additionally hard-reject clearly executable extensions;
+            // partial overlap with the forbidden_extensions config default is intentional - this list works even if that config is emptied
             if ( empty(ConfigMapper::get('resource_extensions')) && in_array($resourceExt, ['php', 'phtml', 'php3', 'php4', 'php5', 'phps', 'pht', 'shtml', 'shtm', 'jsp', 'asp', 'aspx', 'cgi', 'sh'], true) ) {
                 throw new \Exception(trans('invalid_resource_type'));
             }
@@ -172,11 +187,7 @@ class UploadController
 
                 if ( ! empty($savedPath) ) {
                     if ( $partialResource->exists() ) {
-                        @unlink($partialResource->realPath);
-
-                        if ( $partialResource->header->exists() ) {
-                            unset($partialResource->chunkIndex);
-                        }
+                        $partialResource->cleanup();
                     }
 
                     $result['savedPath'] = $savedPath;
@@ -197,7 +208,6 @@ class UploadController
             // validate the data in header file to avoid the errors when network issue occurs
             $lastChunkIndex = (int)($partialResource->chunkIndex);
             if ( (int)$chunkIndex <= $lastChunkIndex ) {
-                // duplicate chunk, already saved - return success idempotently
                 return Responser::returnResult($result);
             }
             if ( (int)$chunkIndex > $lastChunkIndex + 1 ) {
@@ -251,16 +261,10 @@ class UploadController
         } catch ( \Exception $e ) {
 
             if ( $partialResource !== null ) {
-                @unlink($partialResource->realPath);
-
-                if ( $partialResource->header->exists() ) {
-                    unset($partialResource->chunkIndex);
-                }
+                $partialResource->cleanup();
             }
 
-            $knownMessages = [trans('invalid_operation'), trans('upload_error'), trans('invalid_resource_size'), trans('invalid_resource_type'), trans('missing_mimetype'), trans('write_resource_fail'), trans('rename_resource_fail'), trans('delete_resource_fail'), trans('create_header_fail'), trans('write_header_fail'), trans('read_header_fail'), trans('delete_header_fail')];
-
-            return Responser::reportError($result, in_array($e->getMessage(), $knownMessages, true) ? $e->getMessage() : trans('upload_error'));
+            return $this->fail($result, $e);
         }
 
         return Responser::returnResult($result);

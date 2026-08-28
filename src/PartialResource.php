@@ -12,7 +12,6 @@ class PartialResource
     public $header;
     public $path;
     public $realPath;
-    private $chunkIndex = null;
 
     public function __construct($tempBaseName, $extension, $groupSubDir)
     {
@@ -61,6 +60,15 @@ class PartialResource
         }
 
         return true;
+    }
+
+    public function cleanup()
+    {
+        @unlink($this->realPath);
+
+        if ( $this->header->exists() ) {
+            unset($this->chunkIndex);
+        }
     }
 
     public function rename($completeName)
@@ -152,12 +160,23 @@ class PartialResource
 
     public function getCompletePath($name)
     {
-        return base_path() . DIRECTORY_SEPARATOR . ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $this->groupDir . DIRECTORY_SEPARATOR . $this->groupSubDir . DIRECTORY_SEPARATOR . $name;
+        return $this->resourcePath($name);
     }
 
     public function getGroupSubDirPath()
     {
-        return base_path() . DIRECTORY_SEPARATOR . ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $this->groupDir . DIRECTORY_SEPARATOR . $this->groupSubDir;
+        return $this->resourcePath();
+    }
+
+    private function resourcePath($name = null)
+    {
+        $relative = ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $this->groupDir . DIRECTORY_SEPARATOR . $this->groupSubDir;
+
+        if ( $name !== null ) {
+            $relative .= DIRECTORY_SEPARATOR . $name;
+        }
+
+        return base_path() . DIRECTORY_SEPARATOR . $relative;
     }
 
     public function __set($property, $value)
