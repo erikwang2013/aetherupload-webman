@@ -18,7 +18,18 @@ class Header
 
     public function write($content)
     {
-        if ( @file_put_contents($this->realPath, $content, false) === false ) {
+        $handle = @fopen($this->realPath, 'c');
+
+        if ( $handle === false ) {
+            throw new \Exception(trans('write_header_fail'));
+        }
+
+        flock($handle, LOCK_EX);
+        $ok = ftruncate($handle, 0) !== false && fwrite($handle, $content) !== false;
+        flock($handle, LOCK_UN);
+        fclose($handle);
+
+        if ( $ok === false ) {
             throw new \Exception(trans('write_header_fail'));
         }
     }

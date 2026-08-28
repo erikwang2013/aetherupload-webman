@@ -30,8 +30,8 @@ class RedisSavedPathTest extends TestCase
 
     public function testTtlFallsBackToConstantWhenConfigKeyAbsent(): void
     {
-        // 移除 set() 产生的可读覆盖分支后 config() 返回 null，回落常量
-        unset(TestState::$config['plugin.erikwang2013.aetherupload-webman']);
+        // 移除整个 plugin 配置树后 config() 取不到该键，回落常量
+        unset(TestState::$config['plugin']);
 
         $this->assertSame(604800, RedisSavedPath::ttl());
     }

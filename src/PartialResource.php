@@ -12,12 +12,20 @@ class PartialResource
     public $header;
     public $path;
     public $realPath;
+    public $maxSize;
+    public $allowedExtensions;
+    public $forbiddenExtensions;
 
     public function __construct($tempBaseName, $extension, $groupSubDir)
     {
-        $this->tempName = Util::getFileName($tempBaseName, $extension);
+        // 快照 group 配置：webman 单进程内请求交错会覆盖 ConfigMapper 单例，
+        // 校验与路径必须基于本请求自己的配置，不能滞后读取单例
         $this->group = ConfigMapper::get('group');
         $this->groupDir = ConfigMapper::get('group_dir');
+        $this->maxSize = ConfigMapper::get('resource_maxsize');
+        $this->allowedExtensions = ConfigMapper::get('resource_extensions');
+        $this->forbiddenExtensions = ConfigMapper::get('forbidden_extensions');
+        $this->tempName = Util::getFileName($tempBaseName, $extension);
         $this->groupSubDir = $groupSubDir;
         $this->path = $this->getPath();
         $this->realPath = $this->getRealPath();
@@ -44,13 +52,23 @@ class PartialResource
             throw new \Exception(trans('upload_error'));
         }
 
-        if ( file_put_contents($this->realPath, $handle, FILE_APPEND) === false ) {
+        $target = @fopen($this->realPath, 'ab');
+
+        if ( $target === false ) {
             fclose($handle);
             throw new \Exception(trans('write_resource_fail'));
         }
 
+        flock($target, LOCK_EX);
+        $copied = stream_copy_to_stream($handle, $target);
+        flock($target, LOCK_UN);
+
+        fclose($target);
         fclose($handle);
 
+        if ( $copied === false ) {
+            throw new \Exception(trans('write_resource_fail'));
+        }
     }
 
     public function delete()
@@ -67,7 +85,11 @@ class PartialResource
         @unlink($this->realPath);
 
         if ( $this->header->exists() ) {
-            unset($this->chunkIndex);
+            try {
+                unset($this->chunkIndex);
+            } catch ( \Exception $e ) {
+                // 清理失败不应掩盖原始异常
+            }
         }
     }
 
@@ -88,7 +110,7 @@ class PartialResource
 
     public function filterBySize($resourceSize)
     {
-        $maxSize = (int)ConfigMapper::get('resource_maxsize');
+        $maxSize = (int)$this->maxSize;
 
         if ( (int)$resourceSize === 0 || ((int)$resourceSize > $maxSize && $maxSize !== 0) ) {
             throw new \Exception(trans('invalid_resource_size'));
@@ -98,9 +120,7 @@ class PartialResource
 
     public function filterByExtension($resourceExt)
     {
-        $extensions = ConfigMapper::get('resource_extensions');
-
-        if ( empty($resourceExt) || (empty($extensions) === false && in_array($resourceExt, $extensions) === false) || in_array($resourceExt, ConfigMapper::get('forbidden_extensions')) === true ) {
+        if ( empty($resourceExt) || (empty($this->allowedExtensions) === false && in_array($resourceExt, $this->allowedExtensions, true) === false) || in_array($resourceExt, $this->forbiddenExtensions, true) === true ) {
             throw new \Exception(trans('invalid_resource_type'));
         }
     }

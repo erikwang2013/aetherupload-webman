@@ -148,9 +148,14 @@ class UploadController
 
         // security: whitelist client-controlled path components to prevent directory traversal
         foreach ( ['group_subdir' => $groupSubDir, 'resource_temp_basename' => $resourceTempBaseName, 'resource_ext' => $resourceExt] as $name => $value ) {
-            if ( Util::isSafePathComponent($value) === false ) {
+            if ( Util::isSafePathComponent($value, false, 64) === false ) {
                 return Responser::reportError($result, trans('invalid_resource_params'));
             }
+        }
+
+        // security: reject non-numeric chunk parameters, otherwise garbage casts to 0 and silently "succeeds"
+        if ( ! ctype_digit((string)$chunkIndex) || ! ctype_digit((string)$chunkTotalCount) || (int)$chunkIndex < 1 || (int)$chunkTotalCount < 1 ) {
+            return Responser::reportError($result, trans('invalid_resource_params'));
         }
 
         // security: cap the total number of chunks to avoid resource-exhaustion flooding
@@ -162,6 +167,11 @@ class UploadController
 
             ConfigMapper::applyGroupConfig($group);
 
+            // 快照 group 配置，避免并发请求覆盖单例后读到其它组的设置
+            $eventBeforeUploadComplete = ConfigMapper::get('event_before_upload_complete');
+            $eventUploadComplete = ConfigMapper::get('event_upload_complete');
+            $resourceExtensions = ConfigMapper::get('resource_extensions');
+
             $savedPathKey = RedisSavedPath::getKey($group, $resourceHash);
 
             $partialResource = new PartialResource($resourceTempBaseName, $resourceExt, $groupSubDir);
@@ -172,7 +182,7 @@ class UploadController
             // when the whitelist is empty, filterByExtension only consults the blacklist,
             // so additionally hard-reject clearly executable extensions;
             // partial overlap with the forbidden_extensions config default is intentional - this list works even if that config is emptied
-            if ( empty(ConfigMapper::get('resource_extensions')) && in_array($resourceExt, ['php', 'phtml', 'php3', 'php4', 'php5', 'phps', 'pht', 'shtml', 'shtm', 'jsp', 'asp', 'aspx', 'cgi', 'sh'], true) ) {
+            if ( empty($resourceExtensions) && in_array($resourceExt, ['php', 'phtml', 'php3', 'php4', 'php5', 'phps', 'pht', 'shtml', 'shtm', 'jsp', 'asp', 'aspx', 'cgi', 'sh'], true) ) {
                 throw new \Exception(trans('invalid_resource_type'));
             }
 
@@ -230,7 +240,7 @@ class UploadController
                 $partialResource->checkMimeType();
 
                 // trigger the event before an upload completes
-                if ( ConfigMapper::get('event_before_upload_complete') === true ) {
+                if ( $eventBeforeUploadComplete === true ) {
                     \Webman\Event\Event::emit('aetherupload.before_upload_complete', $partialResource);
                 }
 
@@ -251,8 +261,8 @@ class UploadController
                 unset($partialResource->chunkIndex);
 
                 // trigger the event when an upload completes
-                if ( ConfigMapper::get('event_upload_complete') === true ) {
-                    \Webman\Event\Event::emit('aetherupload.upload_complete', new Resource($group, ConfigMapper::get('group_dir'), $groupSubDir, $completeName));
+                if ( $eventUploadComplete === true ) {
+                    \Webman\Event\Event::emit('aetherupload.upload_complete', new Resource($group, $partialResource->groupDir, $groupSubDir, $completeName));
                 }
 
                 $result['savedPath'] = $savedPath;

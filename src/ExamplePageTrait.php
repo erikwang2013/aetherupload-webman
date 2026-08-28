@@ -6,25 +6,27 @@ trait ExamplePageTrait
 
     function postExamplePage()
     {
+        $file1 = htmlspecialchars((string)request()->input('file1'), ENT_QUOTES, 'UTF-8');
+
         return '表单提交的数据（已上传资源的保存路径）：'.
          '<pre>'.
-        json_encode(request()->all()).PHP_EOL.PHP_EOL.
+        htmlspecialchars(json_encode(request()->all()), ENT_QUOTES, 'UTF-8').PHP_EOL.PHP_EOL.
 
         '获得已上传资源file1的<b>访问链接</b>' . PHP_EOL.
         'a.(手动)通过请求路由"域名(分布式启用时应当为储存服务器的域名)/aetherupload/display/"+file1 '.
-        '<a href="' . ConfigMapper::get('route_display') . '/' . request()->input('file1') . '" target="_blank">访问file1</a> ' . PHP_EOL.
+        '<a href="' . ConfigMapper::get('route_display') . '/' . $file1 . '" target="_blank">访问file1</a> ' . PHP_EOL.
         'b.(自动)通过全局帮助方法{{ aetherupload_display_link(file1)  }} '.
-        '<a href="' . aetherupload_display_link(request()->input('file1')) . '" target="_blank">访问file1</a>' . PHP_EOL.
+        '<a href="' . aetherupload_display_link($file1) . '" target="_blank">访问file1</a>' . PHP_EOL.
         'c.(自动)通过工具类方法{{ \AetherUpload\Util::getDisplayLink(file1)  }} '.
-        '<a href="' . Util::getDisplayLink(request()->input('file1')) . '" target="_blank">访问file1</a>' . PHP_EOL.        PHP_EOL.
+        '<a href="' . Util::getDisplayLink($file1) . '" target="_blank">访问file1</a>' . PHP_EOL.        PHP_EOL.
 
         '获得已上传资源file1的<b>下载链接</b>' . PHP_EOL.
         'a.(手动)通过请求路由"域名(分布式启用时应当为储存服务器的域名)/aetherupload/download/"+file1+"/newname" '.
-        '<a href="' . ConfigMapper::get('route_download') . '/' . request()->input('file1') . '/newname" target="_blank">下载file1</a> ' . PHP_EOL.
+        '<a href="' . ConfigMapper::get('route_download') . '/' . $file1 . '/newname" target="_blank">下载file1</a> ' . PHP_EOL.
         'b.(自动)通过全局帮助方法{{ aetherupload_download_link(file1,newname)  }} '.
-        '<a href="' . aetherupload_download_link(request()->input('file1'), 'newname') . '" target="_blank">下载file1</a>' . PHP_EOL.
+        '<a href="' . aetherupload_download_link($file1, 'newname') . '" target="_blank">下载file1</a>' . PHP_EOL.
         'c.(自动)通过工具类方法{{ \AetherUpload\Util::getDownloadLink(file1,newname)  }} '.
-        '<a href="' . Util::getDownloadLink(request()->input('file1'), 'newname') . '" target="_blank">下载file1</a>' . PHP_EOL;
+        '<a href="' . Util::getDownloadLink($file1, 'newname') . '" target="_blank">下载file1</a>' . PHP_EOL;
     }
 
     function examplePageSource()

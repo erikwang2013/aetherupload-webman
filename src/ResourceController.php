@@ -53,8 +53,8 @@ class ResourceController
                 throw new \Exception;
             }
 
-            // sanitize the client-controlled filename to prevent CRLF header injection
-            $newName = str_replace(["\r", "\n", '/', '\\'], '_', (string)$newName);
+            // sanitize the client-controlled filename to prevent CRLF header injection and Content-Disposition breakage
+            $newName = str_replace(["\r", "\n", '/', '\\', '"'], '_', (string)$newName);
             $newResource = Util::getFileName($newName, pathinfo($resource->name, PATHINFO_EXTENSION));
 
         } catch ( \Exception $e ) {
