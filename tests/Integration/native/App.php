@@ -160,7 +160,7 @@ final class App
 
         self::write($root . '/config/aetherupload.php', self::configFixture($redis));
         self::write($root . '/public/index.php', self::indexFixture($redis));
-        self::write($root . '/bin/aetherupload', self::binFixture());
+        self::write($root . '/bin/aetherupload', self::binFixture($redis));
         @chmod($root . '/bin/aetherupload', 0755);
 
         // README 的「通用两步」：不建目录 / 不发布语言文件，preprocess 与错误消息都会不对。
@@ -444,10 +444,20 @@ exit(\\AetherUpload\\Adapter\\Native\\Bootstrap::handle([
 PHP;
     }
 
-    /** 控制台入口：三行，与 README 里给原生 PHP 用户的写法一致 */
-    private static function binFixture(): string
+    /**
+     * 控制台入口：三行，与 README 里给原生 PHP 用户的写法一致。
+     *
+     * **redis 选项必须和前端控制器给的是同一个** —— 配置里 instant_completion=true 时，
+     * aetherupload:build 需要真的能连上 Redis；控制台这条链上漏了它，命令会以
+     * 「未为此宿主配置 Redis」失败（这正是 CI 上抓到的那个缺口：HTTP 侧通了、控制台侧没通）。
+     */
+    private static function binFixture(bool $redis): string
     {
         $repo = self::repoRoot();
+
+        $redisOption = $redis
+            ? "'redis' => static function () { \$redis = new \\Redis(); \$redis->connect('" . self::redisHost() . "', " . self::redisPort() . "); \$redis->select(" . self::redisDb() . "); return \$redis; },"
+            : "'redis' => null,";
 
         return <<<PHP
 #!/usr/bin/env php
@@ -457,7 +467,10 @@ require '$repo/vendor/autoload.php';
 
 \\AetherUpload\\Adapter\\Native\\Bootstrap::bind(
     require __DIR__ . '/../config/aetherupload.php',
-    dirname(__DIR__)
+    dirname(__DIR__),
+    [
+        $redisOption
+    ]
 );
 
 exit((new \\AetherUpload\\Console\\Application())->run());
