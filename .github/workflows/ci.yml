@@ -65,13 +65,18 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    env:
-      # 骨架建在 runner 临时目录，可以整目录缓存，省掉每次 create-project 的几分钟
-      AETHERA_E2E_APP: ${{ runner.temp }}/aetherupload-webman-e2e
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          # 骨架就建在 runner 临时目录里，整目录可缓存 —— 这里显式钉死，
+          # 免得以后改了 harness 的默认路径、缓存目录与实际目录悄悄错开
+          echo "AETHERA_E2E_APP=$RUNNER_TEMP/aetherupload-webman-e2e" >> "$GITHUB_ENV"
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -135,10 +140,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    env:
-      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
@@ -168,10 +176,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    env:
-      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
@@ -201,10 +212,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    env:
-      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
@@ -234,10 +248,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    env:
-      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
@@ -267,10 +284,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    env:
-      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
