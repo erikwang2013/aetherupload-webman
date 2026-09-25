@@ -107,7 +107,7 @@ class XAccelRedirectTest extends TestCase
     {
         $realPath = $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->display(new Request(), $this->savedPath('abc.gif'));
+        $resp = (new ResourceController())->display($this->savedPath('abc.gif'));
 
         $this->assertSame(200, $resp->getStatusCode());
         $this->assertSame('file', $resp->type);
@@ -122,7 +122,7 @@ class XAccelRedirectTest extends TestCase
     {
         $realPath = $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->download(new Request(), $this->savedPath('abc.gif'), 'newname');
+        $resp = (new ResourceController())->download($this->savedPath('abc.gif'), 'newname');
 
         $this->assertSame(200, $resp->getStatusCode());
         $this->assertSame('download', $resp->type);
@@ -142,7 +142,7 @@ class XAccelRedirectTest extends TestCase
         $this->setConfig('x_accel_redirect', true);
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->display(new Request(), $this->savedPath('abc.gif'));
+        $resp = (new ResourceController())->display($this->savedPath('abc.gif'));
         $value = $resp->getHeaderLine('X-Accel-Redirect');
 
         $this->assertSame(200, $resp->getStatusCode());
@@ -165,7 +165,7 @@ class XAccelRedirectTest extends TestCase
         $this->setConfig('x_accel_redirect', true);
         $this->createResource('abc.gif', 'GIF89a', 'custom/uploads');
 
-        $resp = (new ResourceController())->display(new Request(), $this->savedPath('abc.gif'));
+        $resp = (new ResourceController())->display($this->savedPath('abc.gif'));
         $value = $resp->getHeaderLine('X-Accel-Redirect');
 
         $this->assertSame($this->expectedAccelPath('abc.gif'), $value);
@@ -180,7 +180,7 @@ class XAccelRedirectTest extends TestCase
         $this->setConfig('x_accel_redirect', true);
         $this->createResource('abc.svg', '<svg xmlns="http://www.w3.org/2000/svg"></svg>');
 
-        $resp = (new ResourceController())->display(new Request(), $this->savedPath('abc.svg'));
+        $resp = (new ResourceController())->display($this->savedPath('abc.svg'));
 
         $this->assertSame(200, $resp->getStatusCode());
         $this->assertSame(
@@ -201,7 +201,7 @@ class XAccelRedirectTest extends TestCase
         $this->setConfig('x_accel_redirect', true);
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->download(new Request(), $this->savedPath('abc.gif'), 'newname');
+        $resp = (new ResourceController())->download($this->savedPath('abc.gif'), 'newname');
 
         $this->assertSame(200, $resp->getStatusCode());
         $this->assertSame(
@@ -223,7 +223,6 @@ class XAccelRedirectTest extends TestCase
         $this->createResource('abc.gif');
 
         $resp = (new ResourceController())->download(
-            new Request(),
             $this->savedPath('abc.gif'),
             "evil\r\nX-Injected: yes"
         );
@@ -244,7 +243,7 @@ class XAccelRedirectTest extends TestCase
         $this->setConfig('x_accel_redirect', true);
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->display(new Request(), $this->savedPath('abc.gif') . "\r\nX-Injected: yes");
+        $resp = (new ResourceController())->display($this->savedPath('abc.gif') . "\r\nX-Injected: yes");
 
         $this->assertSame(404, $resp->getStatusCode());
         $this->assertArrayNotHasKey('X-Accel-Redirect', $resp->headers);
@@ -259,11 +258,11 @@ class XAccelRedirectTest extends TestCase
         $this->setConfig('x_accel_redirect', true);
         $this->createResource('abc.gif');
 
-        $missing = (new ResourceController())->display(new Request(), $this->savedPath('nope.gif'));
+        $missing = (new ResourceController())->display($this->savedPath('nope.gif'));
         $this->assertSame(404, $missing->getStatusCode());
         $this->assertArrayNotHasKey('X-Accel-Redirect', $missing->headers);
 
-        $unknownGroup = (new ResourceController())->download(new Request(), 'nope_' . self::SUB_DIR . '_abc.gif');
+        $unknownGroup = (new ResourceController())->download('nope_' . self::SUB_DIR . '_abc.gif');
         $this->assertSame(404, $unknownGroup->getStatusCode());
         $this->assertArrayNotHasKey('X-Accel-Redirect', $unknownGroup->headers);
     }

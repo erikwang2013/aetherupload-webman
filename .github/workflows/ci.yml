@@ -40,3 +40,253 @@ jobs:
 
       - name: Run test suite
         run: vendor/bin/phpunit --no-coverage
+
+      - name: Lint every PHP file under this PHP version
+        # 单测只加载 webman 适配器，其余六个框架的适配器代码不会被解析到。
+        # 这一条保证「PHP ^8.0」的语法约束在全部源码上被真实执行，而不是靠静态扫描默认。
+        run: find src commands config -name '*.php' -exec php -l {} + > /dev/null
+
+  # 端到端：真装 webman 骨架 + 真起 HTTP 服务 + 真发请求跑完整上传链路。
+  # 单测用的全是替身，证明不了「在 webman 里能跑」，这一条才是。
+  # 只跑一个 PHP 版本（内核单测的版本矩阵已由上面的 job 覆盖）。
+  integration-webman:
+    name: PHP 8.2 - webman 端到端
+    runs-on: ubuntu-latest
+
+    services:
+      # 第 8 条秒传需要 redis；缺了它会 markTestSkipped 而不是假装通过
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # 骨架建在 runner 临时目录，可以整目录缓存，省掉每次 create-project 的几分钟
+      AETHERA_E2E_APP: ${{ runner.temp }}/aetherupload-webman-e2e
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: |
+            composer-php8.2-
+
+      - name: Cache webman skeleton
+        # vendor/erikwang2013/aetherupload-webman 是指向本次 checkout 的软链，
+        # 复用骨架不会用到旧代码；软链若失效，App::ensure() 会自动重装
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/aetherupload-webman-e2e
+          key: e2e-webman-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: |
+            e2e-webman-php8.2-
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          # 秒传走 webman/redis（illuminate/redis），需要 phpredis
+          extensions: redis
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+
+      - name: Run webman end-to-end suite
+        # 该套件在 bootstrap 里 composer create-project workerman/webman，把本仓库以 path 仓库装进骨架，
+        # 再用 curl 打真实 HTTP；主套件的 phpunit.xml.dist 已 <exclude>tests/Integration</exclude>
+        run: vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml
+
+      - name: Upload webman logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webman-e2e-logs
+          path: ${{ runner.temp }}/aetherupload-webman-e2e/runtime/logs
+          if-no-files-found: ignore
+
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
+  # 非 webman 框架的端到端：各自一条 job，装真框架、真跑完整上传链路。
+  # 骨架搭建全部交给各框架自己的 ci.sh（该脚本本地与 CI 共用同一条路），job 只负责环境与缓存。
+  # 用 PHP 8.2：六个框架的当前版本都要求 >= 8.1；内核自身的 8.0 兼容性由上面的矩阵 job 覆盖。
+  #
+  # 注意：各 harness 会清自己的 aetherupload:* 键，因此**各自用专属 redis 库**
+  # （webman 7 / laravel 4 / thinkphp 5 / hyperf 3 / slim 6 / symfony 8 / yii 9）；
+  # 并行跑时共库会让第 8 条秒传偶发失败。
+  integration-laravel:
+    name: PHP 8.2 - Laravel 端到端
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php8.2-
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: redis
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+      - name: Run Laravel end-to-end suite
+        run: bash tests/Integration/laravel/ci.sh
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
+  integration-thinkphp:
+    name: PHP 8.2 - ThinkPHP 端到端
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php8.2-
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: redis
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+      - name: Run ThinkPHP end-to-end suite
+        run: bash tests/Integration/thinkphp/ci.sh
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
+  integration-symfony:
+    name: PHP 8.2 - Symfony 端到端
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php8.2-
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: redis
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+      - name: Run Symfony end-to-end suite
+        run: bash tests/Integration/symfony/ci.sh
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
+  integration-yii:
+    name: PHP 8.2 - Yii 端到端
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php8.2-
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: redis
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+      - name: Run Yii end-to-end suite
+        run: bash tests/Integration/yii/ci.sh
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
+  integration-slim:
+    name: PHP 8.2 - Slim 端到端
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php8.2-
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: redis
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+      - name: Run Slim end-to-end suite
+        run: bash tests/Integration/slim/ci.sh
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage

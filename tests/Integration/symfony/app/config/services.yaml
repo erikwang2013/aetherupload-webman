@@ -1,0 +1,14 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # framework-bundle 没装 monolog；插件适配器找的 `logger` 服务在这里给个空实现
+    Psr\Log\NullLogger: ~
+    logger: '@Psr\Log\NullLogger'
+
+    # 事件探针（端到端断言第 7 条）：先抛异常，后记录，之后断言两者都被调用过
+    App\ProbeListener:
+        tags:
+            - { name: kernel.event_listener, event: aetherupload.upload_complete, method: throwOnUploadComplete, priority: 10 }
+            - { name: kernel.event_listener, event: aetherupload.upload_complete, method: logUploadComplete, priority: 0 }

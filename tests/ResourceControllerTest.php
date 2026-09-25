@@ -44,7 +44,7 @@ class ResourceControllerTest extends TestCase
     {
         $realPath = $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->display(new Request(), 'file_202608_abc.gif');
+        $resp = (new ResourceController())->display('file_202608_abc.gif');
 
         $this->assertSame(200, $resp->getStatusCode());
         $this->assertSame('file', $resp->type);
@@ -56,7 +56,7 @@ class ResourceControllerTest extends TestCase
     {
         $realPath = $this->createResource('abc.svg', '<svg xmlns="http://www.w3.org/2000/svg"></svg>');
 
-        $resp = (new ResourceController())->display(new Request(), 'file_202608_abc.svg');
+        $resp = (new ResourceController())->display('file_202608_abc.svg');
 
         $this->assertSame(200, $resp->getStatusCode());
         $this->assertSame('download', $resp->type);
@@ -69,7 +69,7 @@ class ResourceControllerTest extends TestCase
     {
         $this->createResource('x.js', 'alert(1);');
 
-        $resp = (new ResourceController())->display(new Request(), 'file_202608_x.js');
+        $resp = (new ResourceController())->display('file_202608_x.js');
 
         $this->assertSame('download', $resp->type);
         $this->assertSame('x.js', $resp->fileName);
@@ -79,14 +79,14 @@ class ResourceControllerTest extends TestCase
     {
         $this->createResource('page.html', '<html></html>');
 
-        $resp = (new ResourceController())->display(new Request(), 'file_202608_page.html');
+        $resp = (new ResourceController())->display('file_202608_page.html');
 
         $this->assertSame('download', $resp->type);
     }
 
     public function testDisplayInvalidUriReturns404()
     {
-        $resp = (new ResourceController())->display(new Request(), 'garbage');
+        $resp = (new ResourceController())->display('garbage');
 
         $this->assertSame(404, $resp->getStatusCode());
         $this->assertSame('display fail', $resp->getBody());
@@ -96,7 +96,7 @@ class ResourceControllerTest extends TestCase
     {
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->display(new Request(), 'file_202608_nope.gif');
+        $resp = (new ResourceController())->display('file_202608_nope.gif');
 
         $this->assertSame(404, $resp->getStatusCode());
         $this->assertSame('display fail', $resp->getBody());
@@ -106,7 +106,7 @@ class ResourceControllerTest extends TestCase
     {
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->display(new Request(), 'nope_202608_abc.gif');
+        $resp = (new ResourceController())->display('nope_202608_abc.gif');
 
         $this->assertSame(404, $resp->getStatusCode());
         $this->assertSame('display fail', $resp->getBody());
@@ -116,7 +116,7 @@ class ResourceControllerTest extends TestCase
     {
         $realPath = $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->download(new Request(), 'file_202608_abc.gif', 'newname');
+        $resp = (new ResourceController())->download('file_202608_abc.gif', 'newname');
 
         $this->assertSame(200, $resp->getStatusCode());
         $this->assertSame('download', $resp->type);
@@ -129,7 +129,7 @@ class ResourceControllerTest extends TestCase
     {
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->download(new Request(), 'file_202608_abc.gif');
+        $resp = (new ResourceController())->download('file_202608_abc.gif');
 
         $this->assertSame('download', $resp->type);
         $this->assertStringEndsWith('.gif', $resp->fileName);
@@ -139,7 +139,7 @@ class ResourceControllerTest extends TestCase
     {
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->download(new Request(), 'file_202608_abc.gif', "evil\r\nX-Injected: yes");
+        $resp = (new ResourceController())->download('file_202608_abc.gif', "evil\r\nX-Injected: yes");
 
         $this->assertSame('download', $resp->type);
         $this->assertStringNotContainsString("\r", $resp->fileName);
@@ -150,7 +150,7 @@ class ResourceControllerTest extends TestCase
     {
         $this->createResource('abc.gif');
 
-        $resp = (new ResourceController())->download(new Request(), 'file_202608_nope.gif', 'newname');
+        $resp = (new ResourceController())->download('file_202608_nope.gif', 'newname');
 
         $this->assertSame(404, $resp->getStatusCode());
         $this->assertSame('download fail', $resp->getBody());

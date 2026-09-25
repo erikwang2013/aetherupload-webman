@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Slim 端到端套件：与主 phpunit.xml.dist 分开跑（主套件已 <exclude>tests/Integration</exclude>）。
+  仓库根目录执行：vendor/bin/phpunit -c tests/Integration/slim/phpunit.xml
+  （CI 入口是 tests/Integration/slim/ci.sh，覆盖率的开关由它统一带上）
+
+  注意：数据源是 *Test.php；bootstrap.php 负责真装 Slim 骨架，App.php 是它的助手，
+  文件名都不以 Test.php 结尾，不会被 PHPUnit 当测试收集。
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="bootstrap.php"
+         colors="true"
+         cacheResult="false">
+    <testsuites>
+        <testsuite name="AetherUpload slim E2E">
+            <directory>.</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

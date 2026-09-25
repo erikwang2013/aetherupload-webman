@@ -21,7 +21,7 @@ class Header
         $handle = @fopen($this->realPath, 'c');
 
         if ( $handle === false ) {
-            throw new \Exception(trans('write_header_fail'));
+            throw new \Exception(Runtime::trans('write_header_fail'));
         }
 
         flock($handle, LOCK_EX);
@@ -30,14 +30,14 @@ class Header
         fclose($handle);
 
         if ( $ok === false ) {
-            throw new \Exception(trans('write_header_fail'));
+            throw new \Exception(Runtime::trans('write_header_fail'));
         }
     }
 
     public function read()
     {
         if ( ($content = @file_get_contents($this->realPath)) === false ) {
-            throw new \Exception(trans('read_header_fail'));
+            throw new \Exception(Runtime::trans('read_header_fail'));
         }
 
         return $content;
@@ -46,7 +46,7 @@ class Header
     public function delete()
     {
         if ( @unlink($this->realPath) === false ) {
-            throw new \Exception(trans('delete_header_fail'));
+            throw new \Exception(Runtime::trans('delete_header_fail'));
         }
     }
 
@@ -57,7 +57,7 @@ class Header
 
     public function getRealPath()
     {
-        return base_path(). DIRECTORY_SEPARATOR .$this->path;
+        return Runtime::basePath(). DIRECTORY_SEPARATOR .$this->path;
     }
 
     public function exists()

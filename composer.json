@@ -1,6 +1,6 @@
 {
   "name": "erikwang2013/aetherupload-webman",
-  "description": "erikwang2013/aetherupload-webman is a aetherupload plugin that is compatible with webman. Mainly suitable for distributed deployment, used to adapt to webman, with simple and fast installation.",
+  "description": "AetherUpload for webman and six more frameworks: chunked large-file upload with resumable transfer, instant upload (sec秒传) and integrity check. Framework-agnostic kernel with adapters for webman, Laravel, ThinkPHP, Symfony, Slim, Hyperf and Yii2.",
   "type": "library",
   "license": "MIT",
   "minimum-stability": "dev",
@@ -18,8 +18,16 @@
     "erikwang2013",
     "aetherupload",
     "webman",
+    "laravel",
+    "thinkphp",
+    "symfony",
+    "slim",
+    "hyperf",
+    "yii",
     "大文件",
     "large",
+    "chunked-upload",
+    "resumable-upload",
     "upload"
   ],
   "support": {
@@ -29,9 +37,8 @@
   },
   "require": {
     "php": "^8.0",
-    "webman/event": "^1.0",
     "symfony/translation": "^5.4 || ^6.0 || ^7.0",
-    "webman/console": "^1.0 || ^2.1.7"
+    "webman/event": "^1.0"
   },
   "autoload": {
     "psr-4": {
@@ -46,7 +53,9 @@
     "classmap": [ "tests/Stubs" ]
   },
   "require-dev": {
-    "phpunit/phpunit": "^9.6 || ^10.5"
+    "phpunit/phpunit": "^9.6 || ^10.5",
+    "symfony/console": "^6.0 || ^7.0",
+    "webman/console": "^1.0 || ^2.1.7"
   },
   "repositories": {
     "packagist": {
@@ -55,6 +64,7 @@
     }
   },
   "suggest": {
-    "predis/predis": "Needed to support instant completion"
+    "predis/predis": "开启秒传（instant_completion）所需；未安装时秒传不可用，其余功能不受影响",
+    "webman/console": "webman 下运行 aetherupload:groups / :build / :clean 三个控制台命令所需（webman 应用的 CLI 本身即由它提供）"
   }
 }

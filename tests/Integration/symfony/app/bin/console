@@ -1,0 +1,16 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * 应用控制台入口（Symfony 常规布局）。tests/Integration/symfony/App.php 用它执行
+ * aetherupload:groups / aetherupload:publish —— 命令因此是在真实应用进程里跑的。
+ */
+
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+
+require \dirname(__DIR__) . '/vendor/autoload.php';
+
+$kernel = new Kernel($_SERVER['APP_ENV'] ?? 'test', (bool)($_SERVER['APP_DEBUG'] ?? false));
+
+exit((new Application($kernel))->run());

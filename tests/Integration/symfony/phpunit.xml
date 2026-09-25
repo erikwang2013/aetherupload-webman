@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Symfony 端到端套件：与主 phpunit.xml.dist 分开跑（主套件已 <exclude>tests/Integration</exclude>）。
+  仓库根目录执行：vendor/bin/phpunit -c tests/Integration/symfony/phpunit.xml
+
+  数据源只有 *Test.php；bootstrap.php 负责真装一个 Symfony 应用并把它的 autoloader 挂上，
+  App.php 与 app/ 骨架（含 app/ 下的 config、src）是它的助手，不会被 PHPUnit 当测试收集。
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="bootstrap.php"
+         colors="true"
+         cacheResult="false">
+    <testsuites>
+        <testsuite name="AetherUpload Symfony E2E">
+            <directory>.</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

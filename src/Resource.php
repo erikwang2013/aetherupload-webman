@@ -29,7 +29,7 @@ class Resource
 
     public function getRealPath()
     {
-        return base_path(). DIRECTORY_SEPARATOR .$this->path;
+        return Runtime::basePath(). DIRECTORY_SEPARATOR .$this->path;
     }
 
     public function exists()
@@ -40,7 +40,7 @@ class Resource
     public function delete()
     {
         if ( unlink($this->realPath) === false ) {
-            throw new \Exception(trans('delete_resource_fail'));
+            throw new \Exception(Runtime::trans('delete_resource_fail'));
         }
 
         return true;

@@ -2,23 +2,24 @@
 <html lang="en-us">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title></title>
+    <title>AetherUpload 示例页</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="csrf-token" content=""><!--需要csrf token-->
+    <link rel="icon" type="image/svg+xml" href="/vendor/aetherupload/js/aetherupload-pet.svg">
     <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 
 <div class="container">
     <div class="page-header">
-        <h1>This is an example page.</h1>
+        <h1><img src="/vendor/aetherupload/js/aetherupload-pet.svg" width="52" alt="" style="vertical-align:-12px;margin-right:10px">This is an example page.</h1>
         <i>view the source code in <a href="/aetherupload/example_source" target="_blank">vendor/erikwang2013/aetherupload-webman/views/example.blade.php</a></i>
     </div>
 
     <div class="row">
         <form method="post" action="/aetherupload">
             <div class="form-group " id="aetherupload-wrapper"><!--组件最外部需要一个名为aetherupload-wrapper的id，用以包装组件-->
-                <label>文件1(自定义)：</label>
+                <label><img src="/vendor/aetherupload/js/aetherupload-pet.svg" width="22" alt="" style="vertical-align:-6px;margin-right:6px">文件1(自定义)：</label>
                 <div class="controls">
                     <input type="file" id="aetherupload-resource" onchange="aetherupload(this).setGroup('file').setSavedPathField('#aetherupload-savedpath').setPreprocessRoute('/aetherupload/preprocess').setUploadingRoute('/aetherupload/uploading').setLaxMode(false).success(someCallback).upload()"/>
                     <!--需要一个名为aetherupload-resource的id，用以标识上传的文件，setGroup(...)设置分组名，setSavedPathField(...)设置资源存储路径的保存节点，setPreprocessRoute(...)设置预处理路由，setUploadingRoute(...)设置上传分块路由，setLaxMode(...)设置宽松模式，success(...)可用于声名上传成功后的回调方法名。默认为选择文件后触发上传，也可根据需求手动更改为特定事件触发，如点击提交表单时-->

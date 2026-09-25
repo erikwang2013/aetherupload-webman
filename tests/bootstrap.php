@@ -11,6 +11,7 @@ use AetherUpload\Tests\Support\ResponseStub;
 use AetherUpload\Tests\Support\TestState;
 
 TestState::reset();
+\AetherUpload\Runtime::bind(new \AetherUpload\Adapter\Webman\WebmanAdapter());
 
 if ( ! function_exists('config') ) {
     function config($key = null, $default = null)
@@ -64,27 +65,8 @@ if ( ! function_exists('json') ) {
     }
 }
 
-if ( ! function_exists('copy_dir') ) {
-    function copy_dir($source, $dest)
-    {
-        if ( ! is_dir($dest) ) {
-            @mkdir($dest, 0777, true);
-        }
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-        foreach ( $iterator as $item ) {
-            $target = $dest . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
-            if ( $item->isDir() ) {
-                @mkdir($target, 0777, true);
-            } else {
-                copy($item->getPathname(), $target);
-            }
-        }
-        return true;
-    }
-}
+// copy_dir 的全局替身已移除：生产代码改走 Runtime::filesystem()->copyDir()（不覆盖已存在文件）。
+// 原先的替身是无条件覆盖，与 webman 的 copy_dir 默认行为不一致，会让「安装幂等」测出假行为。
 
 if ( ! function_exists('remove_dir') ) {
     function remove_dir($dir)

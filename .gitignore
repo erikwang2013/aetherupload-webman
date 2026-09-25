@@ -1,10 +1,11 @@
 .DS_Store
-/vendor/
+vendor
 /.phpunit.cache/
 /.phpunit.result.cache
 /composer.lock
-/tests/report/coverage/
-/tests/report/junit.xml
+# 覆盖率产物（生成物，报告摘要 docs/REPORT.md 才入库）
+/docs/report/coverage/
+/docs/report/junit.xml
 
 # Ruflo local secrets and runtime data
 .env

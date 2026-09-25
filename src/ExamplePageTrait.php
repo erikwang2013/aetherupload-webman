@@ -6,11 +6,11 @@ trait ExamplePageTrait
 
     function postExamplePage()
     {
-        $file1 = htmlspecialchars((string)request()->input('file1'), ENT_QUOTES, 'UTF-8');
+        $file1 = htmlspecialchars((string)Runtime::request()->input('file1'), ENT_QUOTES, 'UTF-8');
 
         return '表单提交的数据（已上传资源的保存路径）：'.
          '<pre>'.
-        htmlspecialchars(json_encode(request()->all()), ENT_QUOTES, 'UTF-8').PHP_EOL.PHP_EOL.
+        htmlspecialchars(json_encode(Runtime::request()->all()), ENT_QUOTES, 'UTF-8').PHP_EOL.PHP_EOL.
 
         '获得已上传资源file1的<b>访问链接</b>' . PHP_EOL.
         'a.(手动)通过请求路由"域名(分布式启用时应当为储存服务器的域名)/aetherupload/display/"+file1 '.
@@ -31,7 +31,11 @@ trait ExamplePageTrait
 
     function examplePageSource()
     {
-        return '<html><body style="background:#222;color:#ddd;font-size:16px;"><pre>' . htmlspecialchars(file_get_contents(__DIR__ . '/../views/example.blade.php')) . '</pre></body></html>';
+        return '<html><head><title>AetherUpload 示例页源码</title>'
+            . '<link rel="icon" type="image/svg+xml" href="/vendor/aetherupload/js/aetherupload-pet.svg"></head>'
+            . '<body style="background:#222;color:#ddd;font-size:16px;">'
+            . '<img src="/vendor/aetherupload/js/aetherupload-pet.svg" width="44" alt="" style="margin:10px 0 0 10px">'
+            . '<pre>' . htmlspecialchars(file_get_contents(__DIR__ . '/../views/example.blade.php')) . '</pre></body></html>';
     }
 
     function getExamplePage()
@@ -42,23 +46,24 @@ return <<<EOT
         <html lang="en-us">
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-            <title></title>
+            <title>AetherUpload 示例页</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
             <meta name="csrf-token" content="">
+            <link rel="icon" type="image/svg+xml" href="/vendor/aetherupload/js/aetherupload-pet.svg">
             <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
         </head>
         <body>
 
         <div class="container">
             <div class="page-header">
-                <h1>This is an example page.</h1>
+                <h1><img src="/vendor/aetherupload/js/aetherupload-pet.svg" width="52" alt="" style="vertical-align:-12px;margin-right:10px">This is an example page.</h1>
                 <i>view the source code in <a href="/aetherupload/example_source" target="_blank">vendor/erikwang2013/aetherupload-webman/views/example.blade.php</a></i>
             </div>
 
             <div class="row">
                 <form method="post" action="/aetherupload">
                     <div class="form-group " id="aetherupload-wrapper"><!--组件最外部需要一个名为aetherupload-wrapper的id，用以包装组件-->
-                        <label>文件1(自定义)：</label>
+                        <label><img src="/vendor/aetherupload/js/aetherupload-pet.svg" width="22" alt="" style="vertical-align:-6px;margin-right:6px">文件1(自定义)：</label>
                         <div class="controls">
                             <input type="file" id="aetherupload-resource" onchange="aetherupload(this).setGroup('file').setSavedPathField('#aetherupload-savedpath').setPreprocessRoute('/aetherupload/preprocess').setUploadingRoute('/aetherupload/uploading').setLaxMode(false).success(someCallback).upload()"/>
                     <!--需要一个名为aetherupload-resource的id，用以标识上传的文件，setGroup(...)设置分组名，setSavedPathField(...)设置资源存储路径的保存节点，setPreprocessRoute(...)设置预处理路由，setUploadingRoute(...)设置上传分块路由，setLaxMode(...)设置宽松模式，success(...)可用于声名上传成功后的回调方法名。默认为选择文件后触发上传，也可根据需求手动更改为特定事件触发，如点击提交表单时-->

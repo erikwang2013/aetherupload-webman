@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Laravel 端到端套件：与主 phpunit.xml.dist 分开跑（主套件已 <exclude>tests/Integration</exclude>）。
+
+  入口是 ci.sh（本地与 CI 共用），它会建临时工作目录、装真 Laravel、再调用本文件：
+      bash tests/Integration/laravel/ci.sh
+
+  本文件里的路径都相对本文件所在目录，因此从哪个 cwd 调用都行；
+  phpunit 可执行文件来自工作目录（<work>/vendor/bin/phpunit），不是仓库的 vendor。
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="bootstrap.php"
+         colors="true"
+         cacheResult="false">
+    <testsuites>
+        <testsuite name="AetherUpload Laravel E2E">
+            <file>LaravelFlowTest.php</file>
+        </testsuite>
+    </testsuites>
+</phpunit>

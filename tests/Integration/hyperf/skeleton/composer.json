@@ -1,0 +1,35 @@
+{
+    "name": "aetherupload/e2e-hyperf",
+    "description": "AetherUpload 的 Hyperf 端到端测试应用（由 App.php 拷进临时目录后 composer update）",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "erikwang2013/aetherupload-webman": "@dev",
+        "hyperf/codec": "~3.2.0",
+        "hyperf/command": "~3.2.0",
+        "hyperf/config": "~3.2.0",
+        "hyperf/context": "~3.2.0",
+        "hyperf/contract": "~3.2.0",
+        "hyperf/di": "~3.2.0",
+        "hyperf/engine": "^2.10",
+        "hyperf/event": "~3.2.0",
+        "hyperf/framework": "~3.2.0",
+        "hyperf/http-message": "~3.2.0",
+        "hyperf/http-server": "~3.2.0",
+        "hyperf/redis": "~3.2.0",
+        "hyperf/server": "~3.2.0",
+        "hyperf/support": "~3.2.0",
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

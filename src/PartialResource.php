@@ -35,11 +35,11 @@ class PartialResource
     public function create()
     {
         if ( $this->createGroupSubDir() === false ) {
-            throw new \Exception(trans('create_subfolder_fail'));
+            throw new \Exception(Runtime::trans('create_subfolder_fail'));
         }
 
         if ( file_put_contents($this->realPath, '', false) === false ) {
-            throw new \Exception(trans('create_resource_fail'));
+            throw new \Exception(Runtime::trans('create_resource_fail'));
         }
 
     }
@@ -49,14 +49,14 @@ class PartialResource
         $handle = @fopen($chunkRealPath, 'rb');
 
         if ( $handle === false ) {
-            throw new \Exception(trans('upload_error'));
+            throw new \Exception(Runtime::trans('upload_error'));
         }
 
         $target = @fopen($this->realPath, 'ab');
 
         if ( $target === false ) {
             fclose($handle);
-            throw new \Exception(trans('write_resource_fail'));
+            throw new \Exception(Runtime::trans('write_resource_fail'));
         }
 
         flock($target, LOCK_EX);
@@ -67,14 +67,14 @@ class PartialResource
         fclose($handle);
 
         if ( $copied === false ) {
-            throw new \Exception(trans('write_resource_fail'));
+            throw new \Exception(Runtime::trans('write_resource_fail'));
         }
     }
 
     public function delete()
     {
         if ( unlink($this->realPath) === false ) {
-            throw new \Exception(trans('delete_resource_fail'));
+            throw new \Exception(Runtime::trans('delete_resource_fail'));
         }
 
         return true;
@@ -103,7 +103,7 @@ class PartialResource
         }else{
 
             if ( rename($this->realPath, $completePath) === false ) {
-                throw new \Exception(trans('rename_resource_fail'));
+                throw new \Exception(Runtime::trans('rename_resource_fail'));
             }
         }
     }
@@ -113,7 +113,7 @@ class PartialResource
         $maxSize = (int)$this->maxSize;
 
         if ( (int)$resourceSize === 0 || ((int)$resourceSize > $maxSize && $maxSize !== 0) ) {
-            throw new \Exception(trans('invalid_resource_size'));
+            throw new \Exception(Runtime::trans('invalid_resource_size'));
         }
 
     }
@@ -121,7 +121,7 @@ class PartialResource
     public function filterByExtension($resourceExt)
     {
         if ( empty($resourceExt) || (empty($this->allowedExtensions) === false && in_array($resourceExt, $this->allowedExtensions, true) === false) || in_array($resourceExt, $this->forbiddenExtensions, true) === true ) {
-            throw new \Exception(trans('invalid_resource_type'));
+            throw new \Exception(Runtime::trans('invalid_resource_type'));
         }
     }
 
@@ -138,7 +138,7 @@ class PartialResource
         $extension = MimeType::search(mime_content_type($this->realPath));
 
         if($extension === null){
-            throw new \Exception(trans('missing_mimetype'));
+            throw new \Exception(Runtime::trans('missing_mimetype'));
         }
 
         $this->filterByExtension($extension);
@@ -151,16 +151,19 @@ class PartialResource
 
     public function createGroupSubDir()
     {
-        $groupDir = dirname($groupSubDir = $this->getGroupSubDirPath());
+        $groupSubDir = $this->getGroupSubDirPath();
+        $groupDir = dirname($groupSubDir);
 
-        if ( file_exists($groupDir) === false ) {
+        // 分组父目录必须由安装/初始化流程（aetherupload:groups 或 Install）先建好，这里不越俎代庖
+        if ( is_dir($groupDir) === false ) {
             return false;
         }
 
-        if ( file_exists($groupSubDir) === false ) {
-            if ( mkdir($groupSubDir, 0755) === false ) {
-                return false;
-            }
+        // 并发首传时多个请求会同时走到这里抢建同一个子目录，抢输的一方 mkdir() 返回 false
+        // 并产生 "mkdir(): File exists" 警告 —— 那不是错误，目录已被别人建好了。
+        // 标准做法是「失败后再查一次」，否则并发首传会被误判成 upload_error。
+        if ( ! is_dir($groupSubDir) && ! @mkdir($groupSubDir, 0755) && ! is_dir($groupSubDir) ) {
+            return false;
         }
 
         return true;
@@ -178,7 +181,7 @@ class PartialResource
 
     public function getRealPath()
     {
-        return base_path(). DIRECTORY_SEPARATOR .$this->path;
+        return Runtime::basePath(). DIRECTORY_SEPARATOR .$this->path;
     }
 
     public function getCompletePath($name)
@@ -199,7 +202,7 @@ class PartialResource
             $relative .= DIRECTORY_SEPARATOR . $name;
         }
 
-        return base_path() . DIRECTORY_SEPARATOR . $relative;
+        return Runtime::basePath() . DIRECTORY_SEPARATOR . $relative;
     }
 
     public function __set($property, $value)

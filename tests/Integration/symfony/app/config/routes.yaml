@@ -1,0 +1,4 @@
+# 插件路由：Symfony 里 bundle 不能自带路由，必须由应用 import 一次。
+aetherupload:
+    resource: '@AetherUploadBundle/Resources/config/routes.php'
+    type: php

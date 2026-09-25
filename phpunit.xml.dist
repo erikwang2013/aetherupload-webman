@@ -5,11 +5,16 @@
     <testsuites>
         <testsuite name="AetherUpload">
             <directory>tests</directory>
+            <!-- 集成测试要真装框架、真起服务，不能混进单测：各自用自己的 phpunit.xml 单独跑 -->
+            <exclude>tests/Integration</exclude>
         </testsuite>
     </testsuites>
-    <coverage>
+    <!-- 覆盖范围：PHPUnit 10 起 <include> 归入 <source>（旧的 <coverage><include> 写法已废弃）。
+         已实测该写法在 PHPUnit 9.6（PHP 8.0 的 CI job）下同样可用，故两个大版本共用这一份配置。 -->
+    <source>
         <include>
             <directory>src</directory>
         </include>
-    </coverage>
+    </source>
+    <coverage/>
 </phpunit>

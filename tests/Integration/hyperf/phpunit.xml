@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hyperf 端到端套件：与主 phpunit.xml.dist 分开跑（主套件已 <exclude>tests/Integration</exclude>）。
+  仓库根目录执行：vendor/bin/phpunit -c tests/Integration/hyperf/phpunit.xml（可加 no-coverage 选项）
+
+  数据源是 *Test.php 两个文件；bootstrap.php 负责真装骨架并起服务，App.php 是它的助手，
+  文件名不以 Test.php 结尾，不会被 PHPUnit 当测试收集。
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="bootstrap.php"
+         colors="true"
+         cacheResult="false">
+    <testsuites>
+        <testsuite name="AetherUpload Hyperf E2E">
+            <directory>.</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

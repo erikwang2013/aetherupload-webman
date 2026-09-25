@@ -1,0 +1,10 @@
+framework:
+    secret: aetherupload-e2e
+    # test.client（WebTestCase/KernelBrowser 的前提）
+    test: true
+    http_method_override: false
+    handle_all_throwables: true
+    translator:
+        # 端到端断言第 6 条要的「未命中」必须真的未命中：
+        # 默认 fallbacks 是 [%kernel.default_locale%]，会把 zz 回落到 en，就测不到「未命中返回 key」这条契约
+        fallbacks: []

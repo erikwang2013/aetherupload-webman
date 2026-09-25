@@ -15,12 +15,12 @@ class SavedPathResolver
         $parts = explode('_', $savedPath, 3);
 
         if ( count($parts) !== 3 ) {
-            throw new \Exception(trans('invalid_operation'));
+            throw new \Exception(Runtime::trans('invalid_operation'));
         }
 
         foreach ( $parts as $field ) {
             if ( Util::isSafePathComponent($field, true) === false ) {
-                throw new \Exception(trans('invalid_operation'));
+                throw new \Exception(Runtime::trans('invalid_operation'));
             }
         }
 
