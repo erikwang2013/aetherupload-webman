@@ -12,7 +12,7 @@
 
 **全体像**
 
-composer パッケージが 1 つで、**カーネルはホストフレームワークから分離**されています。同じコードが webman、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2 で動作します（[対応フレームワーク](#対応フレームワーク) を参照）。ホスト側の設定・ルート・コンソールコマンド・言語ファイル・フロントエンドスクリプトは、インストール / パブリッシュコマンドが配布します。データベースには依存しません。Redis は秒伝を有効にしたときだけ必要になる任意の依存です。
+composer パッケージが 1 つで、**カーネルはホストフレームワークから分離**されています。同じコードが webman、ネイティブ PHP（フレームワークなし）、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2 で動作します（[対応フレームワーク](#対応フレームワーク) を参照）。ホスト側の設定・ルート・コンソールコマンド・言語ファイル・フロントエンドスクリプトは、インストール / パブリッシュコマンドが配布します。データベースには依存しません。Redis は秒伝を有効にしたときだけ必要になる任意の依存です。
 
 ![サンプルページ](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -24,9 +24,9 @@ aetherupload-webman/
 │   ├── Runtime.php                 ホストへのバインディング点（静的ファサード）：プロセス単位では不変のバインディングだけを保持し、未バインド時は明示的にエラーを出す
 │   ├── RequestContext.php          リクエスト単位 / コルーチン単位の可変状態（グループ設定のスナップショット、読み込み済みの言語）。常駐プロセス下でも並行リクエスト同士でグループが混ざらない
 │   ├── Contract/                   11 個のインターフェース（設定 / 翻訳 / リクエスト / アップロードファイル / レスポンス / Redis / イベント / パス / ファイルシステム / コンテキスト / アダプタ）
-│   ├── Kernel/                     カーネル側のデフォルト実装：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、NullEventDispatcher…
-│   ├── Console/                    3 つのコンソールコマンドの業務ロジック（Runner）。7 つのフレームワークのコマンドシェルが同じ実装を共有する
-│   ├── Adapter/                    7 つのアダプタ：Webman / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Kernel/                     カーネル側のデフォルト実装：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、NullEventDispatcher、PhpFileTranslator、ClientRedis…
+│   ├── Console/                    3 つのコマンドの業務ロジック（Runner）+ コンソール規約を持たないホスト向けの既成エントリ。7 種類のコマンドシェルが同じ 1 つを共有する
+│   ├── Adapter/                    8 つのアダプタ：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
 │   ├── UploadController.php        アップロードの入口：preprocess（前処理 / 秒伝判定）と saveChunk（分割書き込み）
 │   ├── ResourceController.php      表示とダウンロードの入口：display / download。nginx に直接送出させることもできる
 │   ├── PartialResource.php         分割ファイルの本体：パスの組み立て、ブロック単位の追記、リネーム、サイズと種別の検証
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  mtime に基づいて期限切れの一時ファイルを削除する
 ├── config/
 │   ├── app.php                   webman プラグイン設定：グループ、ルート、ミドルウェアと各種スイッチ
-│   ├── aetherupload.php          フレームワーク非依存の同一の設定。残り 6 つのアダプタのベースラインになる（2 つのパスは ConfigParityTest が一致を固定する）
+│   ├── aetherupload.php          フレームワーク非依存の同一の設定。残り 7 つのアダプタのベースラインになる（2 つのパスは ConfigParityTest が一致を固定する）
 │   └── route.php                 4 本のルート + それぞれのミドルウェア適用点
 ├── docs/                         ドキュメント、画像、フロントエンドスクリプト
 │   ├── aetherupload-architecture.svg  設計アーキテクチャ図
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       サンプルページのソース。導入時にはこれをそのまま参考にできる
 ├── tests/
 │   ├── *.php                     PHPUnit のユニットケース（ホストはスタブ。PHP 8.0–8.4、PHPUnit 9.6 と 10.5 の 2 バージョン）
-│   └── Integration/<fw>/         フレームワークごとの E2E スイート：実際にフレームワークを導入し、アップロード経路を実際に通す（webman は phpunit.xml で実サーバーを起動し、残り 6 つは各 ci.sh を使う）
+│   └── Integration/<fw>/         フレームワークごとの E2E スイート：実際にフレームワークを導入し、アップロード経路を実際に通す（webman は phpunit.xml で実サーバーを起動し、残り 7 つは各 ci.sh を使う）
 ├── uploads/                      レガシーディレクトリ。プラグインの実行時には使用しない
 └── composer.json
 ```
@@ -125,11 +125,12 @@ aetherupload-webman/
 
 # 対応フレームワーク
 
-カーネル（分割、レジューム、秒伝、検証、アドレッシング）はホストフレームワークから分離されており、同じパッケージが以下のフレームワークで利用できます。いずれも**実際にフレームワークを導入し、アップロード経路を実際に通す** E2E テストで裏付けられています。
+カーネル（分割、レジューム、秒伝、検証、アドレッシング）はホストフレームワークから分離されており、同じパッケージが以下のホストで利用できます。いずれも**実際にフレームワークを導入し、アップロード経路を実際に通す** E2E テストで裏付けられています。
 
-| フレームワーク | 導入手順 | E2E テスト |
+| ホスト | 導入手順 | E2E テスト |
 |---|---|---|
 | webman | ネイティブ対応（`composer require` だけで設定 / ルート / コマンド / フロントエンドスクリプトを自動配布） | `tests/Integration/webman/` |
+| **ネイティブ PHP（フレームワークなし）** | `Bootstrap::handle()` を 1 行。ルートは本パッケージが設定に従って振り分ける | `tests/Integration/native/` |
 | Laravel | ServiceProvider + `vendor:publish` | `tests/Integration/laravel/` |
 | ThinkPHP | `app/service.php` に Service を登録 | `tests/Integration/thinkphp/` |
 | Symfony | Bundle + ルートリソースのインポート | `tests/Integration/symfony/` |
@@ -137,19 +138,54 @@ aetherupload-webman/
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | アプリの `bootstrap` に Bootstrap を登録 | `tests/Integration/yii/` |
 
-> パッケージ名の `webman` は歴史的な経緯によるものです（このプラグインが当初は webman だけをサポートしていたため）。他のフレームワークでの利用には影響しません。
+> パッケージ名の `webman` は歴史的な経緯によるものです（このプラグインが当初は webman だけをサポートしていたため）。他のホストでの利用には影響しません。
 
 ## 共通の 2 ステップ
 
-どのフレームワークでも、パッケージ導入後に**必ず行う**作業が 2 つあります（webman ではインストールスクリプトが自動で行い、それ以外のフレームワークでは対応するコマンドを手動で実行します）。
+どのホストでも、パッケージ導入後に**必ず行う**作業が 2 つあります（webman ではインストールスクリプトが自動で行い、それ以外のホストでは対応するコマンドを手動で実行します）。
 
 1. **ストレージディレクトリの作成**：`aetherupload:groups` —— `root_dir`、`_header` と各グループのディレクトリを作成します。
    **作成しないと必ず失敗します**。カーネルの `createGroupSubDir()` は非再帰の `mkdir` なので、親ディレクトリが無い場合はそのまま false を返し、しかもエラーは一律で大まかな `upload_error` に翻訳されるため、原因がディレクトリだと突き止めるのは困難です。
 2. **ファイルのパブリッシュ**：`aetherupload:publish`（Laravel では `vendor:publish --tag=aetherupload-*`）—— 言語ファイルとフロントエンドの `js` をホストからアクセスできる位置へ配置します。
 
-> コマンド名の区切り文字は各フレームワークのコンソール規約に従います。webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim は `:`、**Yii は `/`** です（`php yii aetherupload/groups`）。以下、各フレームワークの例はそのままコピーして実行できる書き方になっています。
+> コマンド名の区切り文字は各フレームワークのコンソール規約に従います。webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / ネイティブ PHP は `:`、**Yii は `/`** です（`php yii aetherupload/groups`）。以下、各フレームワークの例はそのままコピーして実行できる書き方になっています。
 
 ## フレームワークごとの導入手順
+
+**ネイティブ PHP（フレームワークなし）**
+
+PHP で動くアプリならどれでもそのまま使えます —— フレームワークの導入も、ミドルウェアの導入も、サービスの登録も不要で、エントリスクリプトは 1 行です。
+
+```php
+// public/index.php（FPM / Apache / nginx+php-fpm のエントリスクリプト）
+require __DIR__ . '/../vendor/autoload.php';
+
+exit(\AetherUpload\Adapter\Native\Bootstrap::handle([
+    'base_path' => dirname(__DIR__),
+    'config'    => require __DIR__ . '/../config/aetherupload.php',   // 省略するとパッケージ内のデフォルト値を使う
+    'redis'     => static fn () => new \Redis(),                       // 秒伝に必要。任意
+]));
+```
+
+```bash
+php bin/aetherupload aetherupload:groups     # ディレクトリを作成する
+php bin/aetherupload aetherupload:publish    # 言語ファイルとフロントエンド js をパブリッシュする
+```
+
+`bin/aetherupload` も 3 行です。自分で 1 つ置いてください。
+
+```php
+#!/usr/bin/env php
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+\AetherUpload\Adapter\Native\Bootstrap::bind(require __DIR__ . '/../config/aetherupload.php', dirname(__DIR__));
+exit((new \AetherUpload\Console\Application())->run());
+```
+
+> **ルートは自分で書かなくてよい**：`Bootstrap::handle()` が設定の `route_preprocess` / `route_uploading` / `route_display` / `route_download` に従って現在のリクエストを振り分けます。どのルートにも一致しなければ 404、メソッドが違えば 405 を返し、あわせて `Allow` を付けます。
+> **ミドルウェア**：設定の `middleware_*` はこのホストでは**引数を取らない callable** で、レスポンスオブジェクトを返せばそこで短絡します。権限が足りなければ `return Runtime::response()->text('forbidden', 403);` とすればよく、それ以外の値を返した場合は無視してそのまま処理を続けます（脚注 ④ の権限制御はこうして組み込みます）。
+> **ビルトインサーバー**：`php -S 127.0.0.1:8080 -t public public/index.php` で動きます。`public/` 内の静的ファイル（パブリッシュされたフロントエンド js はこの経路）をビルトインサーバー自身に配信させたい場合は、`handle()` の前に `if (is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) { return false; }` を 1 行加えます。
+> **組み込み関数によるフォールバックは使わない**：リクエストは `$_GET` / `$_POST` / `$_FILES` をそのまま読み（PHP 側で追加のフィルタリングは行われませんが、カーネルの型ガードは通常どおり効きます）、レスポンスは `NativeResponse::send()` が `header()` + `echo` で一括して送信します。フレームワークの仲介層はありません。
 
 **Laravel**
 
@@ -163,7 +199,7 @@ php artisan vendor:publish --tag=aetherupload-translations   # 言語ファイ�
 php artisan vendor:publish --tag=aetherupload-assets         # フロントエンド js をパブリッシュ
 php artisan aetherupload:groups
 ```
-> 本パッケージの composer.json には `extra.laravel.providers` を**含みません**（6 つのフレームワークの依存は互いに排他で、自動検出を固定できないため）。したがって provider は手動で登録する必要があります。
+> 本パッケージの composer.json には `extra.laravel.providers` を**含みません**（各フレームワークの依存は互いに排他で、自動検出を固定できないため）。したがって provider は手動で登録する必要があります。
 > 設定のマージは**浅いマージ**です。アプリが `config/aetherupload.php` をパブリッシュすると、その中の `groups` はプラグインのデフォルト値を**丸ごと置き換え**ます。グループを追加するときは、デフォルトのグループも一緒に書き写してください。
 
 **ThinkPHP**
@@ -263,7 +299,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > ヒント：関連する設定を変更する場合は `config/plugin/erikwang2013/aetherupload-webman/app.php` を編集してください。
 
-> 残り 6 つのフレームワークでは、先にアダプタを登録してから「共通の 2 ステップ」を実行する必要があります。**webman も同じコマンドを提供しています**（`php webman aetherupload:groups` / `aetherupload:publish`）が、インストール時にすでに自動で実行済みです。
+> 残り 7 つのホストでは、先にアダプタを登録してから「共通の 2 ステップ」を実行する必要があります。**webman も同じコマンドを提供しています**（`php webman aetherupload:groups` / `aetherupload:publish`）が、インストール時にすでに自動で実行済みです。
 
 # 使い方  
 **ファイルのアップロード**  

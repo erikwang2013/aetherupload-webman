@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  原生 PHP 端到端套件：与主 phpunit.xml.dist 分开跑（主套件已 <exclude>tests/Integration</exclude>）。
+  仓库根目录执行：vendor/bin/phpunit -c tests/Integration/native/phpunit.xml（可加 no-coverage 选项）
+
+  数据源只有 NativeFlowTest.php；bootstrap.php 负责准备应用并起 php -S，App.php 是它的助手，
+  文件名不以 Test.php 结尾，不会被 PHPUnit 当测试收集。
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="bootstrap.php"
+         colors="true"
+         cacheResult="false">
+    <testsuites>
+        <testsuite name="AetherUpload native PHP E2E">
+            <directory>.</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

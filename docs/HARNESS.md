@@ -2,20 +2,20 @@
 
 本库是框架无关的上传内核（`src/` 根目录 + `src/Contract/` + `src/Kernel/`）加七个宿主适配器
 （`src/Adapter/<Framework>/`），内核只经 `Runtime` 门面与 11 个契约同宿主交谈。单元测试**不引入任何框架**，
-用测试替身隔离宿主依赖，因此一份用例同时覆盖七个框架的内核行为。**编写测试前必读本文档。**
+用测试替身隔离宿主依赖，因此一份用例同时覆盖八个宿主的内核行为。**编写测试前必读本文档。**
 
 > **本文档只管单元测试。** 仓库里还有第二套测试体系：`tests/Integration/` 下是**端到端套件**，
 > 每个框架一套（webman / laravel / thinkphp / symfony / slim / hyperf / yii），
 > 真装框架、真跑 `preprocess → 分块 → 完成 → 下载`，用来证明"在该框架下确实能用"——
 > 这一点替身证明不了。入口是 `vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml`（webman，
-> 起真服务 + curl）或其余六个框架各目录下的 `ci.sh`（本地与 CI 共用同一条路），
+> 起真服务 + curl）或其余七个宿主各目录下的 `ci.sh`（本地与 CI 共用同一条路），
 > 共享断言在 `tests/Integration/FlowAssertions.php`，新框架只需实现 `send()` 与 `appBasePath()`。
 > 主 `phpunit.xml.dist` 已 `<exclude>tests/Integration</exclude>`，两套互不干扰。
 
 `tests/bootstrap.php` 在加载测试前做两件事：绑定 `WebmanAdapter`（`Runtime::bind()`），并定义一组
 **全局函数桩**（下表）——适配器把内核端口代理到这些桩上，桩再从 `TestState` 取值。
 所以「改 `TestState` ⇒ 内核可见」这条注入链路是完整的，既有断言一行没动。
-另外六个适配器**单元测试完全不加载**（它们的 composer 依赖不在 require 里），只在各自的
+另外七个适配器（含原生 PHP）**单元测试完全不加载**（它们的 composer 依赖不在 require 里），只在各自的
 `tests/Integration/<fw>/` 里被真实框架加载和执行。
 
 ## 运行

@@ -12,7 +12,7 @@ browser से सीधे बड़ी file upload करते समय त�
 
 **इसका स्वरूप**
 
-एक composer package, जिसमें **core host framework से decoupled है**: यही code webman, Laravel, ThinkPHP, Symfony, Slim, Hyperf और Yii2 पर चलता है (देखें [समर्थित frameworks](#समर्थित-frameworks))। host का config, route, console command, language file और frontend script install / publish command से distribute होते हैं; database पर कोई निर्भरता नहीं; Redis की ज़रूरत सिर्फ़ instant upload चालू होने पर पड़ती है, यानी यह optional dependency है।
+एक composer package, जिसमें **core host framework से decoupled है**: यही code webman, native PHP (framework के बिना), Laravel, ThinkPHP, Symfony, Slim, Hyperf और Yii2 पर चलता है (देखें [समर्थित frameworks](#समर्थित-frameworks))। host का config, route, console command, language file और frontend script install / publish command से distribute होते हैं; database पर कोई निर्भरता नहीं; Redis की ज़रूरत सिर्फ़ instant upload चालू होने पर पड़ती है, यानी यह optional dependency है।
 
 ![उदाहरण पेज](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -24,9 +24,9 @@ aetherupload-webman/
 │   ├── Runtime.php                 host binding point (static facade): process-level पर केवल immutable binding रखता है, binding न होने पर साफ़ error देता है
 │   ├── RequestContext.php          प्रति request / प्रति coroutine mutable state (group config snapshot, लोड की गई भाषाएँ), long-running process में concurrent requests आपस में group नहीं मिलातीं
 │   ├── Contract/                   11 interfaces (config / translation / request / uploaded file / response / Redis / event / path / filesystem / context / adapter)
-│   ├── Kernel/                     core-side default implementations: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, NullEventDispatcher…
-│   ├── Console/                    तीन console commands का business logic (Runner), जिसे सातों frameworks के command shells साझा करते हैं
-│   ├── Adapter/                    सात adapters: Webman / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Kernel/                     core-side default implementations: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
+│   ├── Console/                    तीन commands का business logic (Runner) + बिना console convention वाले hosts के लिए तैयार entry point, जिसे सातों command shells साझा करते हैं
+│   ├── Adapter/                    आठ adapters: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
 │   ├── UploadController.php        upload entry point: preprocess (preprocessing / instant upload decision) और saveChunk (chunk writing)
 │   ├── ResourceController.php      display और download entry point: display / download, nginx से सीधे भेजने की सुविधा
 │   ├── PartialResource.php         chunk file का मूल object: path assembly, chunk-by-chunk append, rename, size और type verification
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  mtime के अनुसार पुरानी temp files साफ़ करता है
 ├── config/
 │   ├── app.php                   webman plugin config: group, route, middleware और तरह-तरह के switches
-│   ├── aetherupload.php          framework-agnostic वही config, जो बाक़ी छह adapters के लिए baseline है (दोनों paths को ConfigParityTest एक-समान लॉक करता है)
+│   ├── aetherupload.php          framework-agnostic वही config, जो बाक़ी सात adapters के लिए baseline है (दोनों paths को ConfigParityTest एक-समान लॉक करता है)
 │   └── route.php                 चार routes + हर एक के middleware mount points
 ├── docs/                         documents, images और frontend scripts
 │   ├── aetherupload-architecture.svg  design architecture diagram
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       example page का source code, integration के समय सीधे देखा जा सकता है
 ├── tests/
 │   ├── *.php                     PHPUnit unit test cases (host के stand-in उपयोग होते हैं, PHP 8.0–8.4, PHPUnit 9.6 और 10.5 दोनों versions)
-│   └── Integration/<fw>/         end-to-end suite, हर framework के लिए एक: असली framework install होता है और असली upload pipeline चलती है (webman, phpunit.xml से असली service उठाता है; बाक़ी छह अपने-अपने ci.sh से चलते हैं)
+│   └── Integration/<fw>/         end-to-end suite, हर framework के लिए एक: असली framework install होता है और असली upload pipeline चलती है (webman, phpunit.xml से असली service उठाता है; बाक़ी सात अपने-अपने ci.sh से चलते हैं)
 ├── uploads/                      पुराना directory, plugin runtime में इसका उपयोग नहीं होता
 └── composer.json
 ```
@@ -125,11 +125,12 @@ aetherupload-webman/
 
 # समर्थित frameworks
 
-core (chunk, resume, instant upload, verification, addressing) host framework से decoupled है; यही package नीचे दिए frameworks पर चलता है, और हर एक के लिए **असली framework install करके पूरी upload pipeline चलाने वाला** end-to-end test मौजूद है:
+core (chunk, resume, instant upload, verification, addressing) host framework से decoupled है; यही package नीचे दिए hosts पर चलता है, और हर एक के लिए **असली framework install करके पूरी upload pipeline चलाने वाला** end-to-end test मौजूद है:
 
-| framework | integration का तरीका | end-to-end test |
+| host | integration का तरीका | end-to-end test |
 |---|---|---|
 | webman | native support (`composer require` से config/route/command/frontend scripts अपने आप distribute हो जाते हैं) | `tests/Integration/webman/` |
+| **native PHP (framework के बिना)** | एक लाइन `Bootstrap::handle()`, routes इस package द्वारा config के अनुसार dispatch होते हैं | `tests/Integration/native/` |
 | Laravel | ServiceProvider + `vendor:publish` | `tests/Integration/laravel/` |
 | ThinkPHP | `app/service.php` में Service register करें | `tests/Integration/thinkphp/` |
 | Symfony | Bundle + route resource import | `tests/Integration/symfony/` |
@@ -137,19 +138,54 @@ core (chunk, resume, instant upload, verification, addressing) host framework �
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | application के `bootstrap` में Bootstrap लगाएँ | `tests/Integration/yii/` |
 
-> package के नाम में `webman` ऐतिहासिक कारण से है (यह plugin शुरू में सिर्फ़ webman को support करता था); इससे बाक़ी frameworks पर इसके उपयोग पर कोई असर नहीं पड़ता।
+> package के नाम में `webman` ऐतिहासिक कारण से है (यह plugin शुरू में सिर्फ़ webman को support करता था); इससे बाक़ी hosts पर इसके उपयोग पर कोई असर नहीं पड़ता।
 
 ## सामान्य दो चरण
 
-किसी भी framework में package install करने के बाद दो काम **अनिवार्य** हैं (webman में install script इन्हें अपने आप कर देता है, बाक़ी frameworks में संबंधित command ख़ुद चलानी पड़ती है):
+किसी भी host में package install करने के बाद दो काम **अनिवार्य** हैं (webman में install script इन्हें अपने आप कर देता है, बाक़ी hosts में संबंधित command ख़ुद चलानी पड़ती है):
 
 1. **storage directories बनाएँ**: `aetherupload:groups` —— यह `root_dir`, `_header` और हर group का directory बनाता है।
    **इन्हें बनाए बिना काम नहीं चलेगा**: core का `createGroupSubDir()` non-recursive `mkdir` है; parent directory न होने पर यह सीधे false लौटाता है, और error आगे जाकर एक सामान्य `upload_error` में बदल जाता है —— debug करते समय यह पहचानना मुश्किल होता है कि दिक़्क़त directory की है।
 2. **files publish करें**: `aetherupload:publish` (Laravel में `vendor:publish --tag=aetherupload-*`) —— language files और frontend `js` को host से access होने वाली जगह पर रखता है।
 
-> command नाम का separator हर framework के console convention के अनुसार है: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim में `:`, और **Yii में `/`** (`php yii aetherupload/groups`)। नीचे हर framework का उदाहरण सीधे copy करके चलाया जा सकता है।
+> command नाम का separator हर framework के console convention के अनुसार है: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / native PHP में `:`, और **Yii में `/`** (`php yii aetherupload/groups`)। नीचे हर framework का उदाहरण सीधे copy करके चलाया जा सकता है।
 
 ## हर framework का integration
+
+**native PHP (framework के बिना)**
+
+PHP पर चलने वाला कोई भी application इसे सीधे उपयोग कर सकता है —— न framework install करना, न middleware, न service register करना; entry script बस एक लाइन:
+
+```php
+// public/index.php (FPM / Apache / nginx+php-fpm का entry script)
+require __DIR__ . '/../vendor/autoload.php';
+
+exit(\AetherUpload\Adapter\Native\Bootstrap::handle([
+    'base_path' => dirname(__DIR__),
+    'config'    => require __DIR__ . '/../config/aetherupload.php',   // छोड़ दें तो package के default values उपयोग होंगे
+    'redis'     => static fn () => new \Redis(),                       // instant upload के लिए ज़रूरी, optional
+]));
+```
+
+```bash
+php bin/aetherupload aetherupload:groups     # directories बनाता है
+php bin/aetherupload aetherupload:publish    # language files और frontend js publish करता है
+```
+
+`bin/aetherupload` भी तीन लाइनों का है, अपनी एक copy रख लें:
+
+```php
+#!/usr/bin/env php
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+\AetherUpload\Adapter\Native\Bootstrap::bind(require __DIR__ . '/../config/aetherupload.php', dirname(__DIR__));
+exit((new \AetherUpload\Console\Application())->run());
+```
+
+> **routes ख़ुद लिखने की ज़रूरत नहीं**: `Bootstrap::handle()` config में दिए `route_preprocess` / `route_uploading` / `route_display` / `route_download` के अनुसार current request dispatch करता है; कोई route match न हो तो 404, HTTP method ग़लत हो तो 405 और साथ में `Allow` भी।
+> **middleware**: इस host में config के `middleware_*` **बिना argument वाले callable objects** होते हैं; response object लौटाते ही request short-circuit हो जाती है —— permission न हो तो सीधे `return Runtime::response()->text('forbidden', 403);`, और कोई और value लौटने पर उसे नज़रअंदाज़ करके आगे बढ़ा दिया जाता है (चौथे फ़ुटनोट में जिस permission control की बात है, वह इसी तरह जोड़ा जाता है)।
+> **built-in server**: `php -S 127.0.0.1:8080 -t public public/index.php` ही काफ़ी है। अगर built-in server से `public/` की static files ख़ुद serve करानी हों (publish हुई frontend js इसी रास्ते जाती है), तो `handle()` से पहले यह लाइन जोड़ें: `if (is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) { return false; }`।
+> **built-in functions के fallback की ज़रूरत नहीं**: request `$_GET`/`$_POST`/`$_FILES` से पढ़ी जाती है (PHP अलग से filter नहीं करता और core के type guards जैसे हैं वैसे ही लागू रहते हैं), और response `NativeResponse::send()` से एक ही बार `header()` + `echo` करके भेजा जाता है —— framework की कोई middle layer नहीं है।
 
 **Laravel**
 
@@ -163,7 +199,7 @@ php artisan vendor:publish --tag=aetherupload-translations   # language files pu
 php artisan vendor:publish --tag=aetherupload-assets         # frontend js publish करता है
 php artisan aetherupload:groups
 ```
-> इस package के composer.json में `extra.laravel.providers` **नहीं** है (छह frameworks की dependencies आपस में टकराती हैं, इसलिए auto-discovery तय नहीं किया जा सकता); इसीलिए provider ख़ुद register करना ज़रूरी है।
+> इस package के composer.json में `extra.laravel.providers` **नहीं** है (अलग-अलग frameworks की dependencies आपस में टकराती हैं, इसलिए auto-discovery तय नहीं किया जा सकता); इसीलिए provider ख़ुद register करना ज़रूरी है।
 > config merge **shallow merge** है: application में `config/aetherupload.php` publish होते ही उसमें दिया `groups` plugin के default values को **पूरी तरह बदल** देता है —— नया group जोड़ते समय default groups भी उसमें उतार लें।
 
 **ThinkPHP**
@@ -263,7 +299,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > सुझाव: config के options बदलने के लिए `config/plugin/erikwang2013/aetherupload-webman/app.php` edit करें।
 
-> बाक़ी छह frameworks में पहले adapter register करना होता है, फिर “सामान्य दो चरण” चलाने होते हैं। **webman में भी वही commands मौजूद हैं** (`php webman aetherupload:groups` / `aetherupload:publish`), बस install के समय ये अपने आप चल चुकी होती हैं।
+> बाक़ी सात hosts में पहले adapter register करना होता है, फिर “सामान्य दो चरण” चलाने होते हैं। **webman में भी वही commands मौजूद हैं** (`php webman aetherupload:groups` / `aetherupload:publish`), बस install के समय ये अपने आप चल चुकी होती हैं।
 
 # उपयोग  
 **file upload**  

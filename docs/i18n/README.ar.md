@@ -12,7 +12,7 @@
 
 **شكله**
 
-حزمة composer واحدة، **بنواة منفصلة عن إطار المضيف**: الكود نفسه يعمل على webman و Laravel و ThinkPHP و Symfony و Slim و Hyperf و Yii2 (انظر [الأطر المدعومة](#الأطر-المدعومة)). تتولّى أوامر التثبيت / النشر توزيع إعدادات المضيف وتوجيهه وأوامر طرفيته وملفات لغته وسكربتات واجهته الأمامية؛ ولا اعتماد على قاعدة بيانات؛ ولا يُطلب Redis إلا عند تفعيل الرفع الفوري، فهو اعتماد اختياري.
+حزمة composer واحدة، **بنواة منفصلة عن إطار المضيف**: الكود نفسه يعمل على webman و PHP الأصلي (بلا إطار) و Laravel و ThinkPHP و Symfony و Slim و Hyperf و Yii2 (انظر [الأطر المدعومة](#الأطر-المدعومة)). تتولّى أوامر التثبيت / النشر توزيع إعدادات المضيف وتوجيهه وأوامر طرفيته وملفات لغته وسكربتات واجهته الأمامية؛ ولا اعتماد على قاعدة بيانات؛ ولا يُطلب Redis إلا عند تفعيل الرفع الفوري، فهو اعتماد اختياري.
 
 ![مثال لصفحة](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -24,9 +24,9 @@ aetherupload-webman/
 │   ├── Runtime.php                 نقطة ربط المضيف (واجهة ثابتة): على مستوى العملية لا يحمل إلا ارتباطات غير قابلة للتغيير، ويصرّح بخطأ عند غياب الربط
 │   ├── RequestContext.php          حالة قابلة للتغيير لكل طلب / لكل coroutine (لقطة إعدادات المجموعة، اللغات المحمَّلة)، فلا تختلط المجموعات بين الطلبات المتزامنة في العملية المقيمة
 │   ├── Contract/                   11 واجهة (الإعدادات / الترجمة / الطلب / ملف الرفع / الاستجابة / Redis / الأحداث / المسارات / نظام الملفات / السياق / المهايئ)
-│   ├── Kernel/                     التنفيذات الافتراضية في جانب النواة: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, NullEventDispatcher…
-│   ├── Console/                    منطق الأعمال لأوامر الطرفية الثلاثة (Runner)، تتقاسمه قشور الأوامر في الأطر السبعة
-│   ├── Adapter/                    المهايئات السبعة: Webman / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Kernel/                     التنفيذات الافتراضية في جانب النواة: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
+│   ├── Console/                    منطق الأعمال لأوامر الطرفية الثلاثة (Runner) + مدخل جاهز للمضيفات بلا اصطلاح طرفية، تتقاسمه قشور الأوامر السبع نفسها
+│   ├── Adapter/                    المهايئات الثمانية: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
 │   ├── UploadController.php        مدخل الرفع: preprocess (التهيئة / تحديد الرفع الفوري) و saveChunk (كتابة الـ chunks)
 │   ├── ResourceController.php      مدخل العرض والتنزيل: display / download، مع إمكانية تسليم الإرسال إلى nginx مباشرةً
 │   ├── PartialResource.php         جسم ملف الـ chunks: تركيب المسار، والإلحاق chunk تلو الآخر، وإعادة التسمية، والتحقق من الحجم والنوع
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  ينظّف الملفات المؤقتة المنتهية وفق mtime
 ├── config/
 │   ├── app.php                   إعدادات إضافة webman: المجموعات والتوجيه والـ middleware ومختلف المفاتيح
-│   ├── aetherupload.php          الإعدادات نفسها بمعزل عن أي إطار، وتُستخدم خط أساس للمهايئات الستة الأخرى (المساران مثبّتان بالتوافق عبر ConfigParityTest)
+│   ├── aetherupload.php          الإعدادات نفسها بمعزل عن أي إطار، وتُستخدم خط أساس للمهايئات السبعة الأخرى (المساران مثبّتان بالتوافق عبر ConfigParityTest)
 │   └── route.php                 أربعة مسارات + نقطة تركيب middleware لكل منها
 ├── docs/                         التوثيق والصور وسكربتات الواجهة الأمامية
 │   ├── aetherupload-architecture.svg  مخطط البنية
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       مصدر صفحة المثال، يمكن الرجوع إليه مباشرةً عند الدمج
 ├── tests/
 │   ├── *.php                     حالات اختبار الوحدة بـ PHPUnit (المضيف ببدائل، PHP 8.0–8.4، بإصداري PHPUnit 9.6 و 10.5)
-│   └── Integration/<fw>/         أطقم end-to-end، واحدة لكل إطار: تثبيت حقيقي للإطار وتشغيل حقيقي لمسار الرفع (webman يشغّل خدمة حقيقية عبر phpunit.xml، والستة الأخرى عبر ci.sh الخاص بكل منها)
+│   └── Integration/<fw>/         أطقم end-to-end، واحدة لكل إطار: تثبيت حقيقي للإطار وتشغيل حقيقي لمسار الرفع (webman يشغّل خدمة حقيقية عبر phpunit.xml، والسبعة الأخرى عبر ci.sh الخاص بكل منها)
 ├── uploads/                      دليل قديم لا تستخدمه الإضافة وقت التشغيل
 └── composer.json
 ```
@@ -125,11 +125,12 @@ aetherupload-webman/
 
 # الأطر المدعومة
 
-النواة (الـ chunks، والاستئناف، والرفع الفوري، والتحقق، والعنونة) منفصلة عن إطار المضيف، والحزمة نفسها تعمل على الأطر التالية، وكل إطار منها مسنود باختبار end-to-end **يثبّت الإطار فعليًا ويشغّل مسار الرفع كاملًا فعليًا**:
+النواة (الـ chunks، والاستئناف، والرفع الفوري، والتحقق، والعنونة) منفصلة عن إطار المضيف، والحزمة نفسها متاحة على المضيفات التالية، وكل مضيف منها مسنود باختبار end-to-end **يثبّت الإطار فعليًا ويشغّل مسار الرفع كاملًا فعليًا**:
 
-| الإطار | طريقة الدمج | اختبار end-to-end |
+| المضيف | طريقة الدمج | اختبار end-to-end |
 |---|---|---|
 | webman | دعم أصلي (`composer require` يوزّع الإعدادات/التوجيه/الأوامر/سكربتات الواجهة الأمامية تلقائيًا) | `tests/Integration/webman/` |
+| **PHP الأصلي (بلا إطار)** | سطر واحد `Bootstrap::handle()`، والتوجيه توزّعه هذه الحزمة وفق الإعدادات | `tests/Integration/native/` |
 | Laravel | ServiceProvider + `vendor:publish` | `tests/Integration/laravel/` |
 | ThinkPHP | تسجيل Service في `app/service.php` | `tests/Integration/thinkphp/` |
 | Symfony | Bundle + استيراد موارد التوجيه | `tests/Integration/symfony/` |
@@ -137,19 +138,54 @@ aetherupload-webman/
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | تركيب Bootstrap في `bootstrap` الخاص بالتطبيق | `tests/Integration/yii/` |
 
-> وجود `webman` في اسم الحزمة يعود إلى أسباب تاريخية (فالإضافة كانت تدعم webman وحده في البداية)، ولا يمنع ذلك استخدامها مع بقية الأطر.
+> وجود `webman` في اسم الحزمة يعود إلى أسباب تاريخية (فالإضافة كانت تدعم webman وحده في البداية)، ولا يمنع ذلك استخدامها مع بقية المضيفات.
 
 ## خطوتان عامّتان
 
-أيًّا كان الإطار، بعد تثبيت الحزمة هناك إجراءان **إلزاميان** (يكملهما سكربت التثبيت تلقائيًا في webman، أما بقية الأطر فتحتاج إلى تشغيل الأمر المقابل يدويًا):
+أيًّا كان المضيف، بعد تثبيت الحزمة هناك إجراءان **إلزاميان** (يكملهما سكربت التثبيت تلقائيًا في webman، أما بقية المضيفات فتحتاج إلى تشغيل الأمر المقابل يدويًا):
 
 1. **إنشاء دليل التخزين**: `aetherupload:groups` —— ينشئ `root_dir` و `_header` وأدلة المجموعات.
    **وإغفاله يؤدّي إلى الفشل حتمًا**: فالتابع `createGroupSubDir()` في النواة هو `mkdir` غير تعاودي، ويعيد false مباشرةً عند غياب الدليل الأب، ثم تُترجَم الأخطاء كلها إلى `upload_error` العام، فيصعب عند التشخيص أن تتبيّن أن المشكلة في الدليل.
 2. **نشر الملفات**: `aetherupload:publish` (وفي Laravel `vendor:publish --tag=aetherupload-*`) —— يضع ملفات اللغة و `js` الواجهة الأمامية في موضع يمكن للمضيف الوصول إليه.
 
-> يتبع الفاصل في أسماء الأوامر اصطلاح الطرفية لدى كل إطار: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim تستخدم `:`، و**Yii يستخدم `/`** (`php yii aetherupload/groups`). والأمثلة لكل إطار أدناه جاهزة للنسخ والتشغيل مباشرةً.
+> يتبع الفاصل في أسماء الأوامر اصطلاح الطرفية لدى كل إطار: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / PHP الأصلي تستخدم `:`، و**Yii يستخدم `/`** (`php yii aetherupload/groups`). والأمثلة لكل إطار أدناه جاهزة للنسخ والتشغيل مباشرةً.
 
 ## دمج كل إطار
+
+**PHP الأصلي (بلا إطار)**
+
+يمكن لأي تطبيق يعمل على PHP استخدامها مباشرةً —— دون تثبيت إطار، ودون middleware، ودون تسجيل خدمة، ويكفي في سكربت الدخول سطر واحد:
+
+```php
+// public/index.php (سكربت الدخول في FPM / Apache / nginx+php-fpm)
+require __DIR__ . '/../vendor/autoload.php';
+
+exit(\AetherUpload\Adapter\Native\Bootstrap::handle([
+    'base_path' => dirname(__DIR__),
+    'config'    => require __DIR__ . '/../config/aetherupload.php',   // إن حُذف فتُستخدم القيم الافتراضية داخل الحزمة
+    'redis'     => static fn () => new \Redis(),                       // يلزم للرفع الفوري، وهو اختياري
+]));
+```
+
+```bash
+php bin/aetherupload aetherupload:groups     # إنشاء الأدلة
+php bin/aetherupload aetherupload:publish    # نشر ملفات اللغة و js الواجهة الأمامية
+```
+
+و `bin/aetherupload` أيضًا ثلاثة أسطر، ضع نسخة منه بنفسك:
+
+```php
+#!/usr/bin/env php
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+\AetherUpload\Adapter\Native\Bootstrap::bind(require __DIR__ . '/../config/aetherupload.php', dirname(__DIR__));
+exit((new \AetherUpload\Console\Application())->run());
+```
+
+> **لا حاجة إلى كتابة التوجيه بنفسك**: يوزّع `Bootstrap::handle()` الطلب الحالي وفق `route_preprocess` / `route_uploading` / `route_display` / `route_download` في الإعدادات؛ فإن لم يُطابِق الطلب أيًّا منها فالاستجابة 404، وإن كان أسلوبه غير مناسب فالاستجابة 405 مع ترويسة `Allow`.
+> **middleware**: المفاتيح `middleware_*` في الإعدادات هي في هذا المضيف **كائنات قابلة للاستدعاء دون وسائط**، وإرجاع كائن استجابة منها يُنهي المعالجة فورًا —— فإن لم تكفِ الصلاحيات فاكتب مباشرةً `return Runtime::response()->text('forbidden', 403);`، وأي قيمة أخرى تُتجاهل ويستمر التنفيذ (وهكذا يُوصَل التحكم في الصلاحيات المذكور في الحاشية الرابعة).
+> **الخادم المدمج**: يكفي `php -S 127.0.0.1:8080 -t public public/index.php`. ولكي يرسل الخادم المدمج نفسه الملفات الثابتة في `public/` (ومن هذا المسار يُقدَّم js الواجهة الأمامية المنشور)، أضف قبل `handle()` السطر `if (is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) { return false; }`.
+> **بلا اعتماد على الدوال المدمجة كطريق احتياطي**: يقرأ الطلب من `$_GET`/`$_POST`/`$_FILES` (فإن PHP لا يفلتر شيئًا إضافيًا، وتبقى ضوابط الأنواع في النواة فعّالة كما هي)، وتُرسَل الاستجابة عبر `NativeResponse::send()` دفعة واحدة بـ `header()` + `echo`، دون أي طبقة وسيطة من إطار.
 
 **Laravel**
 
@@ -163,7 +199,7 @@ php artisan vendor:publish --tag=aetherupload-translations   # لنشر ملفا
 php artisan vendor:publish --tag=aetherupload-assets         # لنشر js الواجهة الأمامية
 php artisan aetherupload:groups
 ```
-> لا يحتوي composer.json في هذه الحزمة على `extra.laravel.providers` (اعتمادات الأطر الستة متعارضة، فلا يمكن تثبيت الاكتشاف التلقائي فيها)، ولذلك يجب تسجيل الـ provider يدويًا.
+> لا يحتوي composer.json في هذه الحزمة على `extra.laravel.providers` (اعتمادات الأطر متعارضة، فلا يمكن تثبيت الاكتشاف التلقائي فيها)، ولذلك يجب تسجيل الـ provider يدويًا.
 > ودمج الإعدادات **سطحي**: بمجرد أن ينشر التطبيق `config/aetherupload.php` تحلّ `groups` فيه **محل** القيم الافتراضية للإضافة بالكامل —— فعند إضافة مجموعة جديدة انسخ المجموعات الافتراضية معها.
 
 **ThinkPHP**
@@ -263,7 +299,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > ملاحظة: لتغيير خيارات الإعدادات ذات الصلة حرّر `config/plugin/erikwang2013/aetherupload-webman/app.php`.
 
-> أما الأطر الستة الأخرى فيجب فيها تسجيل المهايئ أولًا ثم تنفيذ «الخطوتين العامّتين». و**webman يوفّر الأوامر نفسها أيضًا** (`php webman aetherupload:groups` / `aetherupload:publish`)، غير أنها نُفّذت تلقائيًا مرة واحدة عند التثبيت.
+> أما المضيفات السبعة الأخرى فيجب فيها تسجيل المهايئ أولًا ثم تنفيذ «الخطوتين العامّتين». و**webman يوفّر الأوامر نفسها أيضًا** (`php webman aetherupload:groups` / `aetherupload:publish`)، غير أنها نُفّذت تلقائيًا مرة واحدة عند التثبيت.
 
 # الاستخدام  
 **رفع الملفات**  

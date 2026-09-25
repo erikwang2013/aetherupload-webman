@@ -29,8 +29,8 @@ docker run --rm -v $PWD:/app -w /app php:8.3-cli-alpine sh -c '
 
 | 指标 | 数值 |
 |---|---|
-| 测试总数 | **230** |
-| 断言总数 | **641** |
+| 测试总数 | **237** |
+| 断言总数 | **660** |
 | 失败 / 错误 | 0 |
 | 警告 | 0 |
 
@@ -40,13 +40,13 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 ## 代码覆盖率
 
 `phpunit.xml.dist` 的 `<source>` 覆盖整个 `src/`，但单元套件**只加载 webman 一个适配器**
-（`composer.json` 不 require 任何框架），其余六个适配器在单测里必然是 0 —— 把它们混进一个数字
+（`composer.json` 不 require 任何框架），其余七个适配器在单测里必然是 0 —— 把它们混进一个数字
 没有意义，因此按两栏看：
 
 | 范围 | 行覆盖率（PHP 8.3 + PHPUnit 10.5 + pcov） |
 |---|---|
-| **单测可及**：`src/` 根目录 15 个文件 + `Contract/` + `Kernel/` + `Console/` + `Adapter/Webman/` | **86.87% (675/777)** |
-| 六个非 webman 适配器：`Adapter/{Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii}/` | 0%（单测不加载）→ 由各自端到端套件覆盖，见下文 |
+| **单测可及**：`src/` 根目录 15 个文件 + `Contract/` + `Kernel/` + `Console/` + `Adapter/Webman/` | **81.68% (700/857)** |
+| 七个非 webman 适配器：`Adapter/{Native,Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii}/` | 0%（单测不加载）→ 由各自端到端套件覆盖，见下文 |
 
 | 模块 | 行 | 模块 | 行 |
 |---|---|---|---|
@@ -60,8 +60,16 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 | helpers.php | 50% | Runtime | 86.67% |
 | Kernel/Filesystem | 82.76% | Kernel/PrefixedConfig | 100% |
 | Kernel/AbstractAdapter | 40% | Kernel/UploadedFile | 75% |
+| Kernel/PhpFileTranslator | 100% | Kernel/BasePaths | 100% |
+| Kernel/ClientRedis | 80% | Kernel/ArrayContextStore | 100% |
 | Console/BuildRedisHashesRunner | 88.89% | Console/CleanUpDirectoryRunner | 82.35% |
-| **Console/ListGroupsRunner** | **0%** | Adapter/Webman/* | 66.67–100% |
+| **Console/ListGroupsRunner** | **0%** | **Console/Application + RunnerCommand** | **0%** |
+| Adapter/Webman/* | 66.67–100% | | |
+
+> 本轮把 Slim 与原生 PHP 共用的三个端口（`PhpFileTranslator` / `ClientRedis` / `BasePaths`）与
+> 控制台入口（`Console/Application` + `RunnerCommand`）搬到了内核侧，因此**分母从 777 行涨到 857 行**。
+> 前三个已由新增的 `tests/SharedPortsTest.php` 盖住；后两个是 Symfony Console 的命令壳，
+> 由各适配器的端到端套件真跑（原生 PHP 与 Slim 的 `ci.sh` 都会实际执行 `aetherupload:groups` 等命令）。
 
 ## 未覆盖路径与原因
 
@@ -74,7 +82,10 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 4. **`helpers.php`（2/4）**：`function_exists` 守卫的假分支不可达。
 5. **`RedisSavedPath::exists/set` 的异常分支**、**`PartialResource` 的 IO 失败路径**、
    **`ConfigMapper::set` 的未知属性守卫**：真实文件系统 / predis 契约下不可达，属防御性代码。
-6. **六个非 webman 适配器（1299 行）**：单测里 0%，因为它们的框架依赖根本不在 `require` 里。
+6. **七个非 webman 适配器（1410 行）**：单测里 0%，因为它们的框架依赖根本不在 `require` 里。
+7. **`Console/Application`（0/40）与 `Console/RunnerCommand`（0/13）**：Symfony Console 的命令壳。
+   单测里刻意不加载它们（命令类方法签名不兼容是**加载期 fatal**，会掀掉整个 PHPUnit 进程，见 `docs/HARNESS.md`），
+   改由各适配器的端到端套件真跑 —— 原生 PHP 与 Slim 的 `ci.sh` 都会执行 `list` / `groups` / `publish` / `clean` / `build` 五条命令。
 
 ---
 
@@ -83,6 +94,7 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 | 框架 | 入口 | 用例 |
 |---|---|---|
 | webman | `vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml`（起真 webman 服务，curl 打真 HTTP） | 4 条共享流程 |
+| 原生 PHP | `bash tests/Integration/native/ci.sh`（无框架可装：临时应用三个文件 + `php -S` + curl） | 4 + 4 |
 | Laravel | `bash tests/Integration/laravel/ci.sh`（orchestra/testbench 起真宿主） | 4 + 2 |
 | ThinkPHP | `bash tests/Integration/thinkphp/ci.sh` | 4 + 2 |
 | Symfony | `bash tests/Integration/symfony/ci.sh` | 4 + 12 |
@@ -90,7 +102,7 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 | Hyperf | `bash tests/Integration/hyperf/ci.sh`（需 ext-swoole） | 4 + 3 |
 | Yii2 | `bash tests/Integration/yii/ci.sh` | 4 + 4 |
 
-「4 条共享流程」来自 `tests/Integration/FlowAssertions.php`，七个框架跑的是**同一份断言**：
+「4 条共享流程」来自 `tests/Integration/FlowAssertions.php`，八个宿主跑的是**同一份断言**：
 
 1. `preprocess → 3 个分块 → 完成` 全链路，含 `.part` / `_header` 的中间态检查与最终 `savedPath` 格式
 2. 错误路径：错误 hash、`resource_name[]=1` 这类类型越界输入不返回 500
@@ -99,15 +111,15 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 
 外加 `display` / `download` 的**逐字节相等**与 `X-Content-Type-Options`、`Content-Disposition` 校验。
 
-各框架 harness 用**各自专属的 redis 库**（webman 7 · laravel 4 · thinkphp 5 · hyperf 3 · slim 6 · symfony 8 · yii 9）：
+各适配器 harness 用**各自专属的 redis 库**（webman 7 · laravel 4 · thinkphp 5 · hyperf 3 · slim 6 · symfony 8 · yii 9 · native 10）：
 它们会清理自己的 `aetherupload:*` 键，共库时并行跑会让秒传用例偶发失败。
 
 > 端到端套件不进单测计数：主 `phpunit.xml.dist` 已 `<exclude>tests/Integration</exclude>`，
-> CI 里每个框架一条独立 job（PHP 8.2，六个框架的当前版本都要求 ≥ 8.1）。
+> CI 里每个适配器一条独立 job（PHP 8.2；六个框架的当前版本都要求 ≥ 8.1，原生 PHP 那条不需要装任何框架）。
 
 ---
 
-# 三、本轮（框架无关内核 + 七个适配器）修掉的具体缺陷
+# 三、本轮（框架无关内核 + 八个适配器）修掉的具体缺陷
 
 详见 `git log`，每条都有对应回归用例。
 
@@ -124,7 +136,7 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 
 ---
 
-# 四、测试文件清单（tests/，28 个文件，命名空间 `AetherUpload\Tests`）
+# 四、测试文件清单（tests/，29 个文件，命名空间 `AetherUpload\Tests`）
 
 `UploadControllerTest(31)`、`PartialResourceTest(29)`、`UtilTest(21)`、`RedisSavedPathTest(20)`、
 `MimeTypeTest(12)`、`ResourceControllerTest(11)`、`SavedPathResolverTest(11)`、`XAccelRedirectTest(10)`、
@@ -133,7 +145,7 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 `InstallRootDirTest(4)`、`LaxModeUploadTest(4)`、`ResponserTest(4)`、`ConfigParityTest(3)`、
 `ExamplePageTraitTest(3)`、`InstallFreshAppTest(3)`、`InstallTest(3)`、`PartialResourceCheckSizeTest(3)`、
 `RequestIsolationTest(3)`、`BuildRedisHashesCommandTest(2)`、`CleanUpDirectoryCommandTest(2)`、
-`UploadResumeStateTest(2)`
+`UploadResumeStateTest(2)`、`SharedPortsTest(7)`
 
 共享脚手架：`tests/Support/{TestState,ResponseStub,UploadFixtures}.php` 与 `tests/Stubs/`（`Webman\Http\Request`、
 `support\Redis`、`support\Translation`、`Webman\Event\Event` 的替身）。契约见 `docs/HARNESS.md`。

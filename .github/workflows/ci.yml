@@ -124,12 +124,12 @@ jobs:
       - name: Run test suite
         run: vendor/bin/phpunit --no-coverage
 
-  # 非 webman 框架的端到端：各自一条 job，装真框架、真跑完整上传链路。
-  # 骨架搭建全部交给各框架自己的 ci.sh（该脚本本地与 CI 共用同一条路），job 只负责环境与缓存。
+  # webman 之外的宿主：各自一条 job，装真框架（原生 PHP 那条不用装）、真跑完整上传链路。
+  # 骨架搭建全部交给各自的 ci.sh（该脚本本地与 CI 共用同一条路），job 只负责环境与缓存。
   # 用 PHP 8.2：六个框架的当前版本都要求 >= 8.1；内核自身的 8.0 兼容性由上面的矩阵 job 覆盖。
   #
   # 注意：各 harness 会清自己的 aetherupload:* 键，因此**各自用专属 redis 库**
-  # （webman 7 / laravel 4 / thinkphp 5 / hyperf 3 / slim 6 / symfony 8 / yii 9）；
+  # （webman 7 / laravel 4 / thinkphp 5 / slim 6 / symfony 8 / yii 9 / native 10）；
   # 并行跑时共库会让第 8 条秒传偶发失败。
   integration-laravel:
     name: PHP 8.2 - Laravel 端到端
@@ -308,5 +308,45 @@ jobs:
         run: composer update --no-interaction --prefer-dist
       - name: Run Slim end-to-end suite
         run: bash tests/Integration/slim/ci.sh
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
+  # 原生 PHP（无框架）：宿主就是 PHP 自己，临时应用只有三个文件，起 php -S 用 curl 打真请求。
+  # 这一条跑得最快（不用装任何框架），但它是「不装框架也能用」的唯一证据。
+  integration-native:
+    name: PHP 8.2 - 原生 PHP 端到端
+    runs-on: ubuntu-latest
+    services:
+      # 第 8 条秒传需要 redis；原生适配器用 db 10，与其余 harness 错开
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php8.2-
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          # 秒传要 phpredis（原生适配器的 redis 选项收的就是客户端实例）
+          extensions: redis
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+      - name: Run native PHP end-to-end suite
+        run: bash tests/Integration/native/ci.sh
       - name: Run test suite
         run: vendor/bin/phpunit --no-coverage

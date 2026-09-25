@@ -196,14 +196,14 @@ vendor/bin/phpunit --no-coverage       # 单元套件（宿主 PHP 8.3 / PHPUnit
 
 # 端到端：每个框架一套，真装框架、真跑上传链路
 vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml   # webman（起真 webman 服务 + curl）
-bash tests/Integration/laravel/ci.sh                          # 其余六个同构：laravel/thinkphp/symfony/slim/hyperf/yii
+bash tests/Integration/laravel/ci.sh                          # 其余七个同构：native/laravel/thinkphp/symfony/slim/hyperf/yii
 ```
 
 - 本机 PHP 二进制不可靠时用 Docker：`docker run --rm -v $PWD:/app -w /app php:8.3-cli-alpine php vendor/bin/phpunit --no-coverage`
 - **PHP 8.0–8.4 全版本必须兼容**（CI 矩阵 8.0/8.1/8.2/8.3/8.4）：禁用 `enum`、`readonly`、`never`、`#[Attribute]` 依赖的属性、trait 常量。PHPUnit 双版本（8.0 上解析到 9.6，8.1+ 是 10.5）：不用 `#[DataProvider]` 属性，写普通 `test*` 方法。
 - **改代码前先读 `docs/HARNESS.md`**（单元测试契约）与 `docs/REPORT.md`。
 - 项目结构：内核在 `src/`（根目录 15 个文件 + `Contract/` + `Kernel/` + `Console/`），宿主持有物在 `src/Adapter/<Framework>/`。**内核代码不许 `use` 任何宿主类**，只经 `Runtime` 门面与 `src/Contract/` 的 11 个接口取宿主能力。
-- 六个非 webman 适配器**不在单元测试的依赖里**（`composer.json` 不 require 任何框架）；它们的正确性只由各自的 `tests/Integration/<fw>/` 证明。改了内核就要跑一遍受影响的 `ci.sh`。
+- 七个非 webman 适配器（含原生 PHP）**不在单元测试的依赖里**（`composer.json` 不 require 任何框架）；它们的正确性只由各自的 `tests/Integration/<fw>/` 证明。改了内核就要跑一遍受影响的 `ci.sh`。
 - 新增配置键要同步三处：`config/app.php`（webman 前缀版）、`config/aetherupload.php`（框架无关版）、Symfony 的 `Configuration` 树 —— `tests/ConfigParityTest.php` 会锁死一致性。
 
 ### 证据标准

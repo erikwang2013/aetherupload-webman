@@ -12,7 +12,7 @@ L'envoi direct d'un gros fichier depuis le navigateur se heurte à trois obstacl
 
 **Sa forme**
 
-Un paquet composer, **dont le noyau est découplé du framework hôte** : le même code fonctionne sous webman, Laravel, ThinkPHP, Symfony, Slim, Hyperf et Yii2 (voir [Frameworks pris en charge](#frameworks-pris-en-charge)). La configuration, les routes, les commandes de console, les fichiers de langue et les scripts front-end de l'hôte sont distribués par les commandes d'installation / de publication ; aucune base de données n'est requise ; Redis n'est nécessaire que pour activer l'envoi instantané, c'est une dépendance optionnelle.
+Un paquet composer, **dont le noyau est découplé du framework hôte** : le même code fonctionne sous webman, PHP natif (sans framework), Laravel, ThinkPHP, Symfony, Slim, Hyperf et Yii2 (voir [Frameworks pris en charge](#frameworks-pris-en-charge)). La configuration, les routes, les commandes de console, les fichiers de langue et les scripts front-end de l'hôte sont distribués par les commandes d'installation / de publication ; aucune base de données n'est requise ; Redis n'est nécessaire que pour activer l'envoi instantané, c'est une dépendance optionnelle.
 
 ![Page d'exemple](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -24,9 +24,9 @@ aetherupload-webman/
 │   ├── Runtime.php                 Point d'ancrage hôte (façade statique) : au niveau du processus, il ne détient que des liaisons immuables et signale clairement une liaison manquante
 │   ├── RequestContext.php          État mutable par requête / par coroutine (instantané de la configuration de groupe, langues chargées) ; sous un processus persistant, les requêtes concurrentes ne mélangent pas les groupes
 │   ├── Contract/                   11 interfaces (configuration / traduction / requête / fichier envoyé / réponse / Redis / événements / chemins / système de fichiers / contexte / adaptateur)
-│   ├── Kernel/                     Implémentations par défaut côté noyau : AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, NullEventDispatcher…
-│   ├── Console/                    Logique métier des trois commandes de console (Runner), partagée par les shells de commande des sept frameworks
-│   ├── Adapter/                    Sept adaptateurs : Webman / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Kernel/                     Implémentations par défaut côté noyau : AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, NullEventDispatcher, PhpFileTranslator, ClientRedis…
+│   ├── Console/                    Logique métier des trois commandes (Runner) + points d'entrée prêts à l'emploi pour les hôtes sans convention de console, partagée par les sept shells de commande
+│   ├── Adapter/                    Huit adaptateurs : Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
 │   ├── UploadController.php        Entrée de l'envoi : preprocess (prétraitement / détermination de l'envoi instantané) et saveChunk (écriture par chunks)
 │   ├── ResourceController.php      Entrée de l'affichage et du téléchargement : display / download, avec remise possible de l'envoi à nginx
 │   ├── PartialResource.php         Le fichier en chunks lui-même : assemblage du chemin, ajout chunk après chunk, renommage, contrôle de la taille et du type
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  purge selon le mtime les fichiers temporaires expirés
 ├── config/
 │   ├── app.php                   Configuration du plugin webman : groupes, routes, middleware et divers interrupteurs
-│   ├── aetherupload.php          La même configuration, indépendante du framework, servant de base aux six autres adaptateurs (les deux chemins sont verrouillés par ConfigParityTest)
+│   ├── aetherupload.php          La même configuration, indépendante du framework, servant de base aux sept autres adaptateurs (les deux chemins sont verrouillés par ConfigParityTest)
 │   └── route.php                 Quatre routes + leurs points d'ancrage middleware respectifs
 ├── docs/                         Documentation, images et scripts front-end
 │   ├── aetherupload-architecture.svg  Schéma d'architecture
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       Source de la page d'exemple, à consulter directement lors de l'intégration
 ├── tests/
 │   ├── *.php                     Cas de test unitaires PHPUnit (hôte simulé, PHP 8.0–8.4, PHPUnit 9.6 et 10.5)
-│   └── Integration/<fw>/         Suites de bout en bout, une par framework : vrai framework installé, vrai parcours d'envoi (webman démarre un vrai service via phpunit.xml, les six autres passent par leur propre ci.sh)
+│   └── Integration/<fw>/         Suites de bout en bout, une par framework : vrai framework installé, vrai parcours d'envoi (webman démarre un vrai service via phpunit.xml, les sept autres passent par leur propre ci.sh)
 ├── uploads/                      Répertoire hérité, non utilisé à l'exécution du plugin
 └── composer.json
 ```
@@ -125,11 +125,12 @@ Deux voies parallèles méritent une explication à part :
 
 # Frameworks pris en charge
 
-Le noyau (chunks, reprise, envoi instantané, contrôle, adressage) est découplé du framework hôte : le même paquet fonctionne sous les frameworks ci-dessous, chacun étant adossé à des tests de bout en bout qui **installent réellement le framework et exécutent réellement toute la chaîne d'envoi** :
+Le noyau (chunks, reprise, envoi instantané, contrôle, adressage) est découplé du framework hôte : le même paquet fonctionne sous les hôtes ci-dessous, chacun étant adossé à des tests de bout en bout qui **installent réellement le framework et exécutent réellement toute la chaîne d'envoi** :
 
-| Framework | Intégration | Tests de bout en bout |
+| Hôte | Intégration | Tests de bout en bout |
 |---|---|---|
 | webman | support natif (`composer require` distribue automatiquement configuration / routes / commandes / scripts front-end) | `tests/Integration/webman/` |
+| **PHP natif (sans framework)** | une ligne `Bootstrap::handle()`, le routage distribué par ce paquet selon la configuration | `tests/Integration/native/` |
 | Laravel | ServiceProvider + `vendor:publish` | `tests/Integration/laravel/` |
 | ThinkPHP | enregistrement du Service dans `app/service.php` | `tests/Integration/thinkphp/` |
 | Symfony | Bundle + import des ressources de routage | `tests/Integration/symfony/` |
@@ -137,19 +138,54 @@ Le noyau (chunks, reprise, envoi instantané, contrôle, adressage) est découpl
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | Bootstrap accroché au `bootstrap` de l'application | `tests/Integration/yii/` |
 
-> Le `webman` du nom du paquet s'explique par l'historique (le plugin ne supportait au départ que webman) ; cela n'empêche pas de l'utiliser sous les autres frameworks.
+> Le `webman` du nom du paquet s'explique par l'historique (le plugin ne supportait au départ que webman) ; cela n'empêche pas de l'utiliser sous les autres hôtes.
 
 ## Deux étapes communes
 
-Quel que soit le framework, deux actions **obligatoires** suivent l'installation du paquet (webman les exécute automatiquement via le script d'installation ; pour les autres frameworks, il faut lancer soi-même les commandes correspondantes) :
+Quel que soit l'hôte, deux actions **obligatoires** suivent l'installation du paquet (webman les exécute automatiquement via le script d'installation ; pour les autres hôtes, il faut lancer soi-même les commandes correspondantes) :
 
 1. **Créer les répertoires de stockage** : `aetherupload:groups` — crée `root_dir`, `_header` et les répertoires de chaque groupe.
    **Sans cette étape, l'échec est certain** : le `createGroupSubDir()` du noyau fait un `mkdir` non récursif ; si le répertoire parent manque, il renvoie false, et l'erreur est traduite uniformément en un vague `upload_error`, ce qui rend le diagnostic pénible — difficile d'y voir un problème de répertoire.
 2. **Publier les fichiers** : `aetherupload:publish` (sous Laravel, `vendor:publish --tag=aetherupload-*`) — place les fichiers de langue et le `js` front-end dans un emplacement accessible à l'hôte.
 
-> Le séparateur des noms de commandes suit la convention de console de chaque framework : webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim utilisent `:`, **Yii utilise `/`** (`php yii aetherupload/groups`). Les exemples ci-dessous, framework par framework, sont directement copiables.
+> Le séparateur des noms de commandes suit la convention de console de chaque framework : webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / PHP natif utilisent `:`, **Yii utilise `/`** (`php yii aetherupload/groups`). Les exemples ci-dessous, framework par framework, sont directement copiables.
 
 ## Intégration par framework
+
+**PHP natif (sans framework)**
+
+Toute application tournant sous PHP peut l'utiliser directement — sans installer de framework, sans middleware, sans enregistrer de service, un seul fichier d'entrée :
+
+```php
+// public/index.php (script d'entrée FPM / Apache / nginx+php-fpm)
+require __DIR__ . '/../vendor/autoload.php';
+
+exit(\AetherUpload\Adapter\Native\Bootstrap::handle([
+    'base_path' => dirname(__DIR__),
+    'config'    => require __DIR__ . '/../config/aetherupload.php',   // omise, cette clé laisse jouer les valeurs par défaut du paquet
+    'redis'     => static fn () => new \Redis(),                       // nécessaire à l'envoi instantané, optionnel
+]));
+```
+
+```bash
+php bin/aetherupload aetherupload:groups     # crée les répertoires
+php bin/aetherupload aetherupload:publish    # publie les fichiers de langue et le js front-end
+```
+
+`bin/aetherupload` tient lui aussi en trois lignes, à vous d'en placer une copie :
+
+```php
+#!/usr/bin/env php
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+\AetherUpload\Adapter\Native\Bootstrap::bind(require __DIR__ . '/../config/aetherupload.php', dirname(__DIR__));
+exit((new \AetherUpload\Console\Application())->run());
+```
+
+> **Pas de routage à écrire vous-même** : `Bootstrap::handle()` distribue la requête courante selon `route_preprocess` / `route_uploading` / `route_display` / `route_download` de la configuration ; sans correspondance, 404 ; mauvaise méthode, 405 avec l'en-tête `Allow`.
+> **Middleware** : dans cet hôte, les `middleware_*` de la configuration sont des **appelables sans argument** ; renvoyer un objet réponse court-circuite le traitement — droits insuffisants, faites directement `return Runtime::response()->text('forbidden', 403);` ; toute autre valeur renvoyée est ignorée et le traitement se poursuit (c'est ainsi que se branche le contrôle des droits de la note ④).
+> **Serveur intégré** : `php -S 127.0.0.1:8080 -t public public/index.php` suffit. Pour que le serveur intégré serve lui-même les fichiers statiques de `public/` (c'est par là que passe le js front-end publié), ajoutez avant `handle()` la ligne `if (is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) { return false; }`.
+> **Pas de repli sur les fonctions intégrées** : la requête est lue dans `$_GET`/`$_POST`/`$_FILES` (PHP ne filtre rien de plus, les gardes de type du noyau s'appliquent normalement) et la réponse est émise d'un seul coup par `NativeResponse::send()`, avec `header()` + `echo`, sans couche intermédiaire de framework.
 
 **Laravel**
 
@@ -163,7 +199,7 @@ php artisan vendor:publish --tag=aetherupload-translations   # publie les fichie
 php artisan vendor:publish --tag=aetherupload-assets         # publie le js front-end
 php artisan aetherupload:groups
 ```
-> Le composer.json de ce paquet **ne contient pas** `extra.laravel.providers` (les dépendances des six frameworks s'excluent mutuellement, impossible de figer la découverte automatique) : l'enregistrement manuel du provider est donc obligatoire.
+> Le composer.json de ce paquet **ne contient pas** `extra.laravel.providers` (les dépendances des frameworks s'excluent mutuellement, impossible de figer la découverte automatique) : l'enregistrement manuel du provider est donc obligatoire.
 > La fusion de configuration est une **fusion superficielle** : dès que l'application publie son `config/aetherupload.php`, le `groups` qu'il contient **remplace intégralement** les valeurs par défaut du plugin — quand vous ajoutez un groupe, recopiez aussi les groupes par défaut.
 
 **ThinkPHP**
@@ -266,7 +302,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > Remarque : pour modifier les options de configuration, éditez `config/plugin/erikwang2013/aetherupload-webman/app.php`.
 
-> Les six autres frameworks doivent d'abord enregistrer leur adaptateur, puis exécuter les « deux étapes communes ». **webman fournit les mêmes commandes** (`php webman aetherupload:groups` / `aetherupload:publish`), sauf que l'installation les a déjà exécutées une fois.
+> Les sept autres hôtes doivent d'abord enregistrer leur adaptateur, puis exécuter les « deux étapes communes ». **webman fournit les mêmes commandes** (`php webman aetherupload:groups` / `aetherupload:publish`), sauf que l'installation les a déjà exécutées une fois.
 
 # Utilisation  
 **Envoi de fichiers**  

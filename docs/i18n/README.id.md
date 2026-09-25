@@ -12,7 +12,7 @@ Mengunggah berkas besar langsung dari browser tidak bisa lepas dari tiga masalah
 
 **Bentuknya**
 
-Sebuah paket composer, dengan **inti yang terpisah dari framework host**: kode yang sama dapat dipakai di webman, Laravel, ThinkPHP, Symfony, Slim, Hyperf, dan Yii2 (lihat [Framework yang Didukung](#framework-yang-didukung)). Konfigurasi, rute, perintah konsol, berkas bahasa, dan skrip frontend milik host didistribusikan oleh perintah instalasi / publikasi; tidak bergantung pada basis data; Redis hanya diperlukan saat unggah instan dinyalakan, jadi termasuk dependensi opsional.
+Sebuah paket composer, dengan **inti yang terpisah dari framework host**: kode yang sama dapat dipakai di webman, PHP native (tanpa framework), Laravel, ThinkPHP, Symfony, Slim, Hyperf, dan Yii2 (lihat [Framework yang Didukung](#framework-yang-didukung)). Konfigurasi, rute, perintah konsol, berkas bahasa, dan skrip frontend milik host didistribusikan oleh perintah instalasi / publikasi; tidak bergantung pada basis data; Redis hanya diperlukan saat unggah instan dinyalakan, jadi termasuk dependensi opsional.
 
 ![Halaman contoh](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -24,9 +24,9 @@ aetherupload-webman/
 │   ├── Runtime.php                 titik pengikatan host (facade statis): di tingkat proses hanya menyimpan binding yang tidak berubah; error eksplisit bila belum terikat
 │   ├── RequestContext.php          status yang dapat berubah per request / per coroutine (snapshot konfigurasi grup, bahasa yang sudah dimuat); pada proses persisten request bersamaan tidak saling tertukar grupnya
 │   ├── Contract/                   11 antarmuka (konfigurasi / terjemahan / request / berkas unggahan / respons / Redis / event / jalur / filesystem / konteks / adapter)
-│   ├── Kernel/                     implementasi bawaan di sisi inti: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, NullEventDispatcher…
-│   ├── Console/                    logika bisnis tiga perintah konsol (Runner), dipakai bersama oleh kerangka perintah tujuh framework
-│   ├── Adapter/                    tujuh adapter: Webman / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Kernel/                     implementasi bawaan di sisi inti: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
+│   ├── Console/                    logika bisnis tiga perintah (Runner) + pintu masuk siap pakai untuk host tanpa konvensi konsol, tujuh kerangka perintah memakai salinan yang sama
+│   ├── Adapter/                    delapan adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
 │   ├── UploadController.php        pintu masuk unggah: preprocess (prapemrosesan / penentuan unggah instan) dan saveChunk (penulisan chunk)
 │   ├── ResourceController.php      pintu masuk tampilan dan unduhan: display / download, dapat diserahkan ke nginx untuk pengiriman langsung
 │   ├── PartialResource.php         inti berkas chunk: penyusunan jalur, penambahan per chunk, penggantian nama, verifikasi ukuran dan tipe
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  bersihkan berkas sementara kedaluwarsa berdasarkan mtime
 ├── config/
 │   ├── app.php                   konfigurasi plugin webman: grup, rute, middleware, dan berbagai sakelar
-│   ├── aetherupload.php          konfigurasi yang sama tanpa ketergantungan framework, menjadi basis bagi enam adapter lainnya (kedua jalur dikunci agar konsisten oleh ConfigParityTest)
+│   ├── aetherupload.php          konfigurasi yang sama tanpa ketergantungan framework, menjadi basis bagi tujuh adapter lainnya (kedua jalur dikunci agar konsisten oleh ConfigParityTest)
 │   └── route.php                 empat rute + titik pasang middleware masing-masing
 ├── docs/                         dokumentasi, gambar, dan skrip frontend
 │   ├── aetherupload-architecture.svg  diagram arsitektur desain
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       kode sumber halaman contoh, dapat langsung dijadikan acuan saat integrasi
 ├── tests/
 │   ├── *.php                     kasus uji unit PHPUnit (host memakai test double, PHP 8.0–8.4, dua versi PHPUnit: 9.6 dan 10.5)
-│   └── Integration/<fw>/         rangkaian end-to-end, satu set per framework: benar-benar memasang framework dan menjalankan jalur unggah sungguhan (webman menjalankan layanan sungguhan lewat phpunit.xml, enam lainnya lewat ci.sh masing-masing)
+│   └── Integration/<fw>/         rangkaian end-to-end, satu set per framework: benar-benar memasang framework dan menjalankan jalur unggah sungguhan (webman menjalankan layanan sungguhan lewat phpunit.xml, tujuh lainnya lewat ci.sh masing-masing)
 ├── uploads/                      direktori warisan, tidak dipakai saat plugin berjalan
 └── composer.json
 ```
@@ -125,11 +125,12 @@ Dua jalur samping perlu dijelaskan tersendiri:
 
 # Framework yang Didukung
 
-Inti (chunk, lanjut-unggah, unggah instan, verifikasi, pengalamatan) terpisah dari framework host; paket yang sama dapat dipakai pada framework berikut, dan masing-masing dijaga oleh pengujian end-to-end yang **benar-benar memasang framework dan menjalankan seluruh jalur unggah yang sesungguhnya**:
+Inti (chunk, lanjut-unggah, unggah instan, verifikasi, pengalamatan) terpisah dari framework host; paket yang sama dapat dipakai pada host berikut, dan masing-masing dijaga oleh pengujian end-to-end yang **benar-benar memasang framework dan menjalankan seluruh jalur unggah yang sesungguhnya**:
 
-| Framework | Cara integrasi | Pengujian end-to-end |
+| Host | Cara integrasi | Pengujian end-to-end |
 |---|---|---|
 | webman | Dukungan bawaan (`composer require` langsung mendistribusikan konfigurasi / rute / perintah / skrip frontend secara otomatis) | `tests/Integration/webman/` |
+| **PHP native (tanpa framework)** | Satu baris `Bootstrap::handle()`, rute didistribusikan oleh paket ini menurut konfigurasi | `tests/Integration/native/` |
 | Laravel | ServiceProvider + `vendor:publish` | `tests/Integration/laravel/` |
 | ThinkPHP | Daftarkan Service di `app/service.php` | `tests/Integration/thinkphp/` |
 | Symfony | Bundle + impor sumber daya rute | `tests/Integration/symfony/` |
@@ -137,19 +138,54 @@ Inti (chunk, lanjut-unggah, unggah instan, verifikasi, pengalamatan) terpisah da
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | Pasang Bootstrap di `bootstrap` aplikasi | `tests/Integration/yii/` |
 
-> Kata `webman` pada nama paket adalah warisan sejarah (plugin ini awalnya hanya mendukung webman) dan tidak memengaruhi pemakaiannya di framework lain.
+> Kata `webman` pada nama paket adalah warisan sejarah (plugin ini awalnya hanya mendukung webman) dan tidak memengaruhi pemakaiannya di host lain.
 
 ## Dua Langkah Umum
 
-Apa pun framework-nya, setelah paket terpasang ada dua tindakan yang **wajib** dilakukan (pada webman keduanya dikerjakan otomatis oleh skrip instalasi; framework lain harus menjalankan perintahnya sendiri secara manual):
+Apa pun host-nya, setelah paket terpasang ada dua tindakan yang **wajib** dilakukan (pada webman keduanya dikerjakan otomatis oleh skrip instalasi; host lain harus menjalankan perintahnya sendiri secara manual):
 
 1. **Buat direktori penyimpanan**: `aetherupload:groups` — membuat `root_dir`, `_header`, dan direktori setiap grup.
    **Tanpa ini pasti gagal**: `createGroupSubDir()` di inti adalah `mkdir` non-rekursif, sehingga bila direktori induknya tidak ada ia langsung mengembalikan false, dan galatnya diterjemahkan secara seragam menjadi `upload_error` yang umum sehingga sulit terlihat bahwa masalahnya ada di direktori.
 2. **Publikasikan berkas**: `aetherupload:publish` (untuk Laravel gunakan `vendor:publish --tag=aetherupload-*`) — menaruh berkas bahasa dan `js` frontend ke lokasi yang dapat diakses host.
 
-> Pemisah pada nama perintah mengikuti konvensi konsol masing-masing framework: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim memakai `:`, sedangkan **Yii memakai `/`** (`php yii aetherupload/groups`). Contoh tiap framework di bawah ini dapat disalin dan dijalankan langsung.
+> Pemisah pada nama perintah mengikuti konvensi konsol masing-masing framework: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / PHP native memakai `:`, sedangkan **Yii memakai `/`** (`php yii aetherupload/groups`). Contoh tiap framework di bawah ini dapat disalin dan dijalankan langsung.
 
 ## Integrasi per Framework
+
+**PHP native (tanpa framework)**
+
+Aplikasi apa pun yang berjalan di atas PHP dapat langsung memakainya — tanpa memasang framework, tanpa memasang middleware, dan tanpa mendaftarkan service; skrip pintu masuknya cukup satu baris:
+
+```php
+// public/index.php (skrip pintu masuk FPM / Apache / nginx+php-fpm)
+require __DIR__ . '/../vendor/autoload.php';
+
+exit(\AetherUpload\Adapter\Native\Bootstrap::handle([
+    'base_path' => dirname(__DIR__),
+    'config'    => require __DIR__ . '/../config/aetherupload.php',   // bila dihilangkan, dipakai nilai bawaan di dalam paket
+    'redis'     => static fn () => new \Redis(),                       // diperlukan untuk unggah instan, opsional
+]));
+```
+
+```bash
+php bin/aetherupload aetherupload:groups     # buat direktori
+php bin/aetherupload aetherupload:publish    # publikasikan berkas bahasa dan js frontend
+```
+
+`bin/aetherupload` juga tiga baris, cukup sediakan satu salinannya sendiri:
+
+```php
+#!/usr/bin/env php
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+\AetherUpload\Adapter\Native\Bootstrap::bind(require __DIR__ . '/../config/aetherupload.php', dirname(__DIR__));
+exit((new \AetherUpload\Console\Application())->run());
+```
+
+> **Rute tidak perlu ditulis sendiri**: `Bootstrap::handle()` mendistribusikan request yang sedang berjalan menurut `route_preprocess` / `route_uploading` / `route_display` / `route_download` di berkas konfigurasi; bila tidak ada yang cocok dikembalikan 404, bila metodenya salah dikembalikan 405 beserta header `Allow`.
+> **Middleware**: `middleware_*` di berkas konfigurasi pada host ini berupa **objek yang dapat dipanggil tanpa argumen**; mengembalikan objek respons berarti memutus rantai — bila hak aksesnya kurang, langsung `return Runtime::response()->text('forbidden', 403);`, sedangkan nilai kembalian lain diabaikan begitu saja dan pemrosesan dilanjutkan (begitulah kontrol hak akses yang dimaksud pada catatan kaki ④ disambungkan).
+> **Server bawaan**: cukup `php -S 127.0.0.1:8080 -t public public/index.php`. Agar server bawaan mengirim sendiri berkas statis di dalam `public/` (js frontend hasil publikasi lewat jalur ini), tambahkan satu baris `if (is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) { return false; }` sebelum `handle()`.
+> **Tidak memakai fungsi bawaan sebagai cadangan**: request dibaca dari `$_GET`/`$_POST`/`$_FILES` (PHP tidak menyaringnya secara tambahan, penjaga tipe di inti tetap berlaku seperti biasa), sedangkan respons dikirim oleh `NativeResponse::send()` sekali jalan lewat `header()` + `echo`, tanpa lapisan perantara framework.
 
 **Laravel**
 
@@ -163,7 +199,7 @@ php artisan vendor:publish --tag=aetherupload-translations   # publikasikan berk
 php artisan vendor:publish --tag=aetherupload-assets         # publikasikan js frontend
 php artisan aetherupload:groups
 ```
-> composer.json paket ini **tidak memuat** `extra.laravel.providers` (dependensi enam framework saling bertentangan sehingga penemuan otomatis tidak bisa dipatok), karena itu provider harus didaftarkan secara manual.
+> composer.json paket ini **tidak memuat** `extra.laravel.providers` (dependensi antarframework saling bertentangan sehingga penemuan otomatis tidak bisa dipatok), karena itu provider harus didaftarkan secara manual.
 > Penggabungan konfigurasi bersifat **shallow merge**: begitu aplikasi memublikasikan `config/aetherupload.php`, `groups` di dalamnya akan **menggantikan seluruhnya** nilai bawaan plugin — saat menambah grup, salin juga grup bawaannya.
 
 **ThinkPHP**
@@ -267,7 +303,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > Catatan: untuk mengubah opsi konfigurasi terkait, edit `config/plugin/erikwang2013/aetherupload-webman/app.php`.
 
-> Enam framework lainnya harus mendaftarkan adapter terlebih dahulu, lalu menjalankan "dua langkah umum". **webman juga menyediakan perintah yang sama** (`php webman aetherupload:groups` / `aetherupload:publish`), hanya saja keduanya sudah dijalankan otomatis saat instalasi.
+> Tujuh host lainnya harus mendaftarkan adapter terlebih dahulu, lalu menjalankan "dua langkah umum". **webman juga menyediakan perintah yang sama** (`php webman aetherupload:groups` / `aetherupload:publish`), hanya saja keduanya sudah dijalankan otomatis saat instalasi.
 
 # Penggunaan  
 **Unggah berkas**  

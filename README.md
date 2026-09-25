@@ -12,7 +12,7 @@
 
 **它的形状**
 
-一个 composer 包，**内核与宿主框架解耦**：同一份代码在 webman、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2 下可用（见 [支持的框架](#支持的框架)）。宿主的配置、路由、控制台命令、语言文件与前端脚本由安装 / 发布命令分发；不依赖数据库；Redis 只在开启秒传时才需要，属可选依赖。
+一个 composer 包，**内核与宿主框架解耦**：同一份代码在 webman、原生 PHP（无框架）、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2 下可用（见 [支持的框架](#支持的框架)）。宿主的配置、路由、控制台命令、语言文件与前端脚本由安装 / 发布命令分发；不依赖数据库；Redis 只在开启秒传时才需要，属可选依赖。
 
 ![示例页面](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -24,9 +24,9 @@ aetherupload-webman/
 │   ├── Runtime.php                 宿主绑定点（静态门面）：进程级只持有不可变绑定，未绑定时明确报错
 │   ├── RequestContext.php          每请求 / 每协程的可变状态（分组配置快照、已加载语种），常驻进程下并发请求不串组
 │   ├── Contract/                   11 个接口（配置 / 翻译 / 请求 / 上传文件 / 响应 / Redis / 事件 / 路径 / 文件系统 / 上下文 / 适配器）
-│   ├── Kernel/                     内核侧默认实现：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、NullEventDispatcher…
-│   ├── Console/                    三个控制台命令的业务逻辑（Runner），七个框架的命令壳共用同一份
-│   ├── Adapter/                    七个适配器：Webman / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Kernel/                     内核侧默认实现：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、PhpFileTranslator、ClientRedis…
+│   ├── Console/                    三个命令的业务逻辑（Runner）+ 无控制台约定宿主的现成入口，七种命令壳共用同一份
+│   ├── Adapter/                    八个适配器：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
 │   ├── UploadController.php        上传入口：preprocess（预处理 / 秒传判定）与 saveChunk（分块写入）
 │   ├── ResourceController.php      展示与下载入口：display / download，支持交给 nginx 直发
 │   ├── PartialResource.php         分块文件本体：路径拼装、逐块追加、重命名、大小与类型校验
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  按 mtime 清理过期临时文件
 ├── config/
 │   ├── app.php                   webman 插件配置：分组、路由、中间件与各类开关
-│   ├── aetherupload.php          框架无关的同一份配置，供其余六个适配器作基线（两条路径由 ConfigParityTest 锁死一致）
+│   ├── aetherupload.php          框架无关的同一份配置，供其余七个适配器作基线（两条路径由 ConfigParityTest 锁死一致）
 │   └── route.php                 四条路由 + 各自的中间件挂载点
 ├── docs/                         文档、图片与前端脚本
 │   ├── aetherupload-architecture.svg  设计架构图
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       示例页源码，接入时可直接参考
 ├── tests/
 │   ├── *.php                     PHPUnit 单元用例（宿主用替身，PHP 8.0–8.4，PHPUnit 9.6 与 10.5 双版本）
-│   └── Integration/<fw>/         端到端套件，每个框架一套：真装框架、真跑上传链路（webman 走 phpunit.xml 起真服务，其余六个走各自的 ci.sh）
+│   └── Integration/<fw>/         端到端套件，每个框架一套：真装框架、真跑上传链路（webman 走 phpunit.xml 起真服务，其余七个走各自的 ci.sh）
 ├── uploads/                      遗留目录，插件运行时不使用
 └── composer.json
 ```
@@ -125,11 +125,12 @@ aetherupload-webman/
 
 # 支持的框架
 
-内核（分块、续传、秒传、校验、寻址）与宿主框架解耦，同一份包在下列框架下可用，每个都有**真装框架、真跑完整上传链路**的端到端测试兜底：
+内核（分块、续传、秒传、校验、寻址）与宿主框架解耦，同一份包在下列宿主下可用，每个都有**真装框架、真跑完整上传链路**的端到端测试兜底：
 
-| 框架 | 接入方式 | 端到端测试 |
+| 宿主 | 接入方式 | 端到端测试 |
 |---|---|---|
 | webman | 原生支持（`composer require` 即自动分发配置/路由/命令/前端脚本） | `tests/Integration/webman/` |
+| **原生 PHP（无框架）** | 一行 `Bootstrap::handle()`，路由由本包按配置分发 | `tests/Integration/native/` |
 | Laravel | ServiceProvider + `vendor:publish` | `tests/Integration/laravel/` |
 | ThinkPHP | `app/service.php` 里注册 Service | `tests/Integration/thinkphp/` |
 | Symfony | Bundle + 路由资源导入 | `tests/Integration/symfony/` |
@@ -137,19 +138,54 @@ aetherupload-webman/
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | 应用 `bootstrap` 里挂 Bootstrap | `tests/Integration/yii/` |
 
-> 包名里的 `webman` 是历史原因（本插件最初只支持 webman），不影响在其余框架下使用。
+> 包名里的 `webman` 是历史原因（本插件最初只支持 webman），不影响在其余宿主下使用。
 
 ## 通用两步
 
-无论哪个框架，装完包之后有两条**必做**动作（webman 由安装脚本自动完成，其余框架需要手动跑对应命令）：
+无论哪个宿主，装完包之后有两条**必做**动作（webman 由安装脚本自动完成，其余宿主需要手动跑对应命令）：
 
 1. **建存储目录**：`aetherupload:groups` —— 创建 `root_dir`、`_header` 与各分组目录。
    **不建就一定失败**：内核的 `createGroupSubDir()` 是非递归 `mkdir`，父目录缺失时直接返回 false，而错误会被统一翻译成笼统的 `upload_error`，排查时很难看出是目录问题。
 2. **发布文件**：`aetherupload:publish`（Laravel 用 `vendor:publish --tag=aetherupload-*`）—— 把语言文件与前端 `js` 放进宿主可访问的位置。
 
-> 命令名的分隔符跟着各框架的控制台约定：webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim 用 `:`，**Yii 用 `/`**（`php yii aetherupload/groups`）。下面每家的示例都是可直接复制运行的写法。
+> 命令名的分隔符跟着各框架的控制台约定：webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / 原生 PHP 用 `:`，**Yii 用 `/`**（`php yii aetherupload/groups`）。下面每家的示例都是可直接复制运行的写法。
 
 ## 各框架接入
+
+**原生 PHP（无框架）**
+
+任何跑在 PHP 上的应用都能直接用 —— 不装框架、不装中间件、不注册服务，入口脚本一行：
+
+```php
+// public/index.php（FPM / Apache / nginx+php-fpm 的入口脚本）
+require __DIR__ . '/../vendor/autoload.php';
+
+exit(\AetherUpload\Adapter\Native\Bootstrap::handle([
+    'base_path' => dirname(__DIR__),
+    'config'    => require __DIR__ . '/../config/aetherupload.php',   // 省略则用包内默认值
+    'redis'     => static fn () => new \Redis(),                       // 秒传需要，可选
+]));
+```
+
+```bash
+php bin/aetherupload aetherupload:groups     # 建目录
+php bin/aetherupload aetherupload:publish    # 发布语言文件与前端 js
+```
+
+`bin/aetherupload` 也是三行，自己放一份即可：
+
+```php
+#!/usr/bin/env php
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+\AetherUpload\Adapter\Native\Bootstrap::bind(require __DIR__ . '/../config/aetherupload.php', dirname(__DIR__));
+exit((new \AetherUpload\Console\Application())->run());
+```
+
+> **路由不用自己写**：`Bootstrap::handle()` 按配置里的 `route_preprocess` / `route_uploading` / `route_display` / `route_download` 分发当前请求，未命中 404、方法不对 405 并给出 `Allow`。
+> **中间件**：配置里的 `middleware_*` 在这一宿主下是**无参可调用对象**，返回响应对象即短路 —— 权限不够直接 `return Runtime::response()->text('forbidden', 403);`，返回别的值一律无视并继续（四号脚注说的权限控制就是这么接）。
+> **内置服务器**：`php -S 127.0.0.1:8080 -t public public/index.php` 即可。要让内置服务器自己发 `public/` 里的静态文件（发布出来的前端 js 走这条），在 `handle()` 之前加一句 `if (is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) { return false; }`。
+> **不用内置函数兜底**：请求读 `$_GET`/`$_POST`/`$_FILES`（PHP 不额外过滤，内核的类型守卫照常生效），响应由 `NativeResponse::send()` 一次性 `header()` + `echo` 发出，没有框架的中间层。
 
 **Laravel**
 
@@ -163,7 +199,7 @@ php artisan vendor:publish --tag=aetherupload-translations   # 发布语言文�
 php artisan vendor:publish --tag=aetherupload-assets         # 发布前端 js
 php artisan aetherupload:groups
 ```
-> 本包 composer.json **不含** `extra.laravel.providers`（六框架依赖互斥，无法写死自动发现），因此必须手动注册 provider。
+> 本包 composer.json **不含** `extra.laravel.providers`（各框架依赖互斥，无法写死自动发现），因此必须手动注册 provider。
 > 配置合并是**浅合并**：应用一旦发布了 `config/aetherupload.php`，其中的 `groups` 会**整体替换**插件默认值——新增分组时请把默认分组一并抄进去。
 
 **ThinkPHP**
@@ -263,7 +299,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > 提示：更改相关配置选项请编辑 `config/plugin/erikwang2013/aetherupload-webman/app.php`。
 
-> 其余六个框架必须先注册适配器，再跑「通用两步」。**webman 也提供同样的命令**（`php webman aetherupload:groups` / `aetherupload:publish`），只是安装时已自动跑过一遍。
+> 其余七个宿主必须先注册适配器，再跑「通用两步」。**webman 也提供同样的命令**（`php webman aetherupload:groups` / `aetherupload:publish`），只是安装时已自动跑过一遍。
 
 # 使用  
 **文件上传**  
