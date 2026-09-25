@@ -4,3 +4,18 @@
 /.phpunit.result.cache
 /composer.lock
 /tests/report/coverage/
+/tests/report/junit.xml
+
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude/
+.claude-flow/
+.agents/
+.swarm/
+.mcp.json
+ruvector.db
+
+# Codex local configuration
+.codex/

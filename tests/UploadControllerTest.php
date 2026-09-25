@@ -2,6 +2,7 @@
 
 namespace AetherUpload\Tests;
 
+use AetherUpload\RedisSavedPath;
 use AetherUpload\Tests\Support\TestState;
 use AetherUpload\UploadController;
 use PHPUnit\Framework\TestCase;
@@ -511,7 +512,8 @@ class UploadControllerTest extends TestCase
 
         $this->assertSame(0, $this->decoded($resp)['error']);
         $this->assertSame('file_' . self::SUB_DIR . '_' . $hash . '.gif', $savedPath);
-        $this->assertSame($savedPath, TestState::$redisHash['aetherupload_resource']['file_' . $hash]);
+        // 秒传记录必须能被读回；具体存储形态（hash 还是独立 key）由 RedisSavedPath 自己决定，见 RedisSavedPathTest
+        $this->assertSame($savedPath, RedisSavedPath::get(RedisSavedPath::getKey('file', $hash)));
 
         $names = array_column(TestState::$events, 'name');
         $this->assertContains('aetherupload.before_upload_complete', $names);

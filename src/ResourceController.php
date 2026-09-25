@@ -9,6 +9,9 @@ class ResourceController
 
     const INLINE_BLOCKED_EXTENSIONS = ['svg', 'svgz', 'html', 'htm', 'xml', 'xhtml', 'xht', 'xsl', 'js', 'mjs'];
 
+    // 开启x_accel_redirect时使用的nginx内部前缀，需与配置文件中给出的location一致
+    const ACCEL_PREFIX = '/internal-aetherupload/';
+
     public function display(Request $request, $uri)
     {
 
@@ -29,9 +32,22 @@ class ResourceController
             return response('display fail', 404);
         }
 
+        $inlineBlocked = in_array(strtolower(pathinfo($resource->name, PATHINFO_EXTENSION)), self::INLINE_BLOCKED_EXTENSIONS, true);
+
+        // 开启后交由nginx直接发送文件；重定向头为相对root_dir的路径，与配置中alias指向的目录对齐；只由服务端已校验的数据拼出，不含客户端原始输入
+        if ( ConfigMapper::get('x_accel_redirect') === true ) {
+            $response = response('', 200)->withHeader('X-Accel-Redirect', self::ACCEL_PREFIX . $resource->groupDir . '/' . $resource->groupSubDir . '/' . $resource->name);
+
+            if ( $inlineBlocked ) {
+                $response = $response->withHeader('Content-Disposition', 'attachment; filename="' . $resource->name . '"');
+            }
+
+            return $response->withHeader('X-Content-Type-Options', 'nosniff');
+        }
+
         $response = response()->file($resource->realPath);
 
-        if ( in_array(strtolower(pathinfo($resource->name, PATHINFO_EXTENSION)), self::INLINE_BLOCKED_EXTENSIONS, true) ) {
+        if ( $inlineBlocked ) {
             $response = response()->download($resource->realPath, $resource->name);
         }
 
@@ -53,13 +69,21 @@ class ResourceController
                 throw new \Exception;
             }
 
-            // sanitize the client-controlled filename to prevent CRLF header injection and Content-Disposition breakage
-            $newName = str_replace(["\r", "\n", '/', '\\', '"'], '_', (string)$newName);
+            // sanitize the client-controlled filename to prevent header injection and Content-Disposition breakage (quotes, slashes, C0 control characters and DEL)
+            $newName = preg_replace('/[\x00-\x1f\x7f"\\\\\/]/', '_', (string)$newName);
             $newResource = Util::getFileName($newName, pathinfo($resource->name, PATHINFO_EXTENSION));
 
         } catch ( \Exception $e ) {
 
             return response('download fail', 404);
+        }
+
+        // 开启后交由nginx直接发送文件，Content-Disposition需由程序设置；路径为相对root_dir的路径，只由服务端已校验的数据拼出
+        if ( ConfigMapper::get('x_accel_redirect') === true ) {
+            return response('', 200)
+                ->withHeader('X-Accel-Redirect', self::ACCEL_PREFIX . $resource->groupDir . '/' . $resource->groupSubDir . '/' . $resource->name)
+                ->withHeader('Content-Disposition', 'attachment; filename="' . $newResource . '"')
+                ->withHeader('X-Content-Type-Options', 'nosniff');
         }
 
         return response()->download($resource->realPath, $newResource)->withHeader('X-Content-Type-Options', 'nosniff');

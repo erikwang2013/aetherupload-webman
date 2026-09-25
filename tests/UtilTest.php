@@ -185,9 +185,12 @@ class UtilTest extends TestCase
         $this->assertArrayNotHasKey('file_abc', TestState::$redisHash['aetherupload_resource']);
     }
 
-    public function testDeleteRedisSavedPathReturnsFalseWhenRecordMissing(): void
+    public function testDeleteRedisSavedPathIsIdempotentWhenRecordMissing(): void
     {
-        $this->assertFalse(Util::deleteRedisSavedPath('file_201701_abc.jpg'));
+        // 秒传记录不存在时的删除按幂等成功处理（见 RedisSavedPath::delete），不得报错、也不得凭空造出记录
+        $this->assertTrue(Util::deleteRedisSavedPath('file_201701_abc.jpg'));
+        $this->assertSame([], TestState::$redisStrings);
+        $this->assertSame([], TestState::$redisHash);
     }
 
     public function testDeleteRedisSavedPathThrowsOnUndecodableSavedPath(): void

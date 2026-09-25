@@ -814,7 +814,9 @@ class MimeType
      */
     public static function search($mimeType)
     {
-        $result = array_search($mimeType, array_merge(self::$mimes, ConfigMapper::get('extra_mime_types')));
+        // (array) 兜底：宿主配置若缺少 extra_mime_types 键，config() 返回 null，
+        // array_merge 会抛 TypeError（不是 \Exception，控制器捕获不到，直接 500）
+        $result = array_search($mimeType, array_merge(self::$mimes, (array)ConfigMapper::get('extra_mime_types')));
 
         return $result === false ? null : $result;
     }

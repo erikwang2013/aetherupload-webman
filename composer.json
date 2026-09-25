@@ -4,6 +4,7 @@
   "type": "library",
   "license": "MIT",
   "minimum-stability": "dev",
+  "prefer-stable": true,
   "authors": [
     {
       "name": "erik",
@@ -28,9 +29,9 @@
   },
   "require": {
     "php": "^8.0",
-    "webman/event": "*",
-    "symfony/translation": "*",
-    "webman/console": "*"
+    "webman/event": "^1.0",
+    "symfony/translation": "^5.4 || ^6.0 || ^7.0",
+    "webman/console": "^1.0 || ^2.1.7"
   },
   "autoload": {
     "psr-4": {

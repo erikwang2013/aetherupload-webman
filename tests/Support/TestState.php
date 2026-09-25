@@ -19,10 +19,16 @@ final class TestState
     /** @var string directory returned by base_path() */
     public static string $basePath = '';
 
-    /** @var array [hashKey => [field => value]] in-memory Redis store */
+    /** @var array [hashKey => [field => value]] in-memory Redis hash store */
     public static array $redisHash = [];
 
-    /** @var array [hashKey => seconds] recorded expire() calls */
+    /** @var array [key => value] in-memory Redis string store（秒传记录：一条记录一个 key） */
+    public static array $redisStrings = [];
+
+    /** @var array [key => seconds] TTL of each string key, recorded by setex() */
+    public static array $redisStringExpire = [];
+
+    /** @var array [key => seconds] recorded expire() calls */
     public static array $redisExpireCalls = [];
 
     /** @var array [['name' => string, 'data' => mixed], ...] emitted events */
@@ -40,6 +46,8 @@ final class TestState
         self::$request = null;
         self::$basePath = sys_get_temp_dir() . '/aetherupload-tests-' . bin2hex(random_bytes(4));
         self::$redisHash = [];
+        self::$redisStrings = [];
+        self::$redisStringExpire = [];
         self::$redisExpireCalls = [];
         self::$events = [];
         self::$translationResources = [];
@@ -76,6 +84,8 @@ final class TestState
     public static function resetRedis(): void
     {
         self::$redisHash = [];
+        self::$redisStrings = [];
+        self::$redisStringExpire = [];
         self::$redisExpireCalls = [];
     }
 

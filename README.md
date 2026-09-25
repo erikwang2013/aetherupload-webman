@@ -52,7 +52,7 @@
     'event_upload_complete'        => false,
 ],
 ```
-在前端通过调用`setGroup('分组名')`方法指定上传分组，注意分组名必须已经存在。
+在前端通过调用`setGroup('分组名')`方法指定上传分组，注意分组名必须已经存在，且**不能包含下划线**（它参与存储路径编码，含下划线会导致该分组下的资源无法被定位，配置与上传阶段即会失败）。
 
 **添加秒传功能（需Redis及浏览器支持）**  
 
@@ -68,6 +68,7 @@
 \AetherUpload\Util::deleteResource($savedPath); //删除对应的资源文件
 \AetherUpload\Util::deleteRedisSavedPath($savedPath); //删除对应的Redis秒传记录
 ``` 
+*两者均为幂等操作：文件或秒传记录已不存在时同样返回true。* 
 
 **自定义中间件**  
 
@@ -122,6 +123,17 @@
 ```php
 0 0 * * * php /项目根目录的绝对路径/webman aetherupload:build 1> /dev/null 2>&1  
 ```  
+
+* **（可选）启用nginx内部重定向，支持大文件断点续传与视频拖动**  
+webman的文件响应不实现HTTP Range，大文件下载会整包下发，视频无法拖动进度条，且整个传输期间占用一个worker进程。若部署在nginx下，可开启本插件的`x_accel_redirect`选项，文件改由nginx直接发送，worker立即释放，并支持Range（断点续传、视频拖动）。  
+在本插件配置文件下编辑`'x_accel_redirect' => true,`，并在nginx配置中为内部前缀添加location，`alias`指向项目上传根目录的绝对路径（注意结尾的斜杠）：  
+```nginx
+location /internal-aetherupload/ {
+    internal;
+    alias /项目根目录的绝对路径/storage/app/aetherupload/;
+}
+```
+该location必须保留`internal`，防止外部绕过程序直接访问资源文件；修改`root_dir`后`alias`需同步调整。  
 
 * **提高分块临时文件读写速度（仅对PHP生效）**  
 利用Linux的tmpfs文件系统，来达到将上传的分块临时文件放到内存中快速读写的目的，通过以空间换时间，提升读写效率，将会**额外占用**部分内存（约1个分块大小）。  

@@ -6,11 +6,14 @@
 ## 运行
 
 ```bash
-# 本机 PHP 已损坏(段错误)，必须用 Docker 运行：
+vendor/bin/phpunit --no-coverage
+
+# 需要验证其它 PHP 版本（8.0/8.4 等）时才用 Docker：
 docker run --rm -v $PWD:/app -w /app php:8.3-cli-alpine php vendor/bin/phpunit --no-coverage
 ```
 
-PHPUnit 10.5，配置见 `phpunit.xml.dist`。测试文件放 `tests/` 根目录，类名 `*Test`，
+PHPUnit 10.5（PHP 8.1+；PHP 8.0 上 composer 会解析到 9.6，CI 矩阵同此），配置见
+`phpunit.xml.dist`。测试文件放 `tests/` 根目录，类名 `*Test`，
 命名空间 `AetherUpload\Tests`，继承 `PHPUnit\Framework\TestCase`。
 
 ## 全局函数桩（bootstrap 已定义，测试内直接使用）
@@ -34,7 +37,9 @@ PHPUnit 10.5，配置见 `phpunit.xml.dist`。测试文件放 `tests/` 根目录
   例如 `resource_maxsize` 写为 `TestState::set('plugin.erikwang2013.aetherupload-webman.app.groups.file.resource_maxsize', 100)`
 - `TestState::$request = new Request([...inputs...], [...files...])` — 注入当前请求
 - `TestState::$events` — `Webman\Event\Event::emit` 记录 `['name'=>, 'data'=>]`
-- `TestState::$redisHash` / `$redisExpireCalls` — Redis 桩存储（也可用 `resetRedis()`）
+- `TestState::$redisStrings` / `$redisStringExpire` — 秒传记录（一条记录一个 key，`setex` 写入）
+- `TestState::$redisHash` / `$redisExpireCalls` — 旧版 hash 存储的残留，仅供 legacy 回退用例
+- `resetRedis()` 清空以上四者；`resetConfigMapper()` 见下文 ConfigMapper 单例说明
 - `TestState::$translationResources` / `$locale` — 记录值
 
 **默认配置**（bootstrap 已装载）：`instant_completion=false`、`lax_mode=false`、
@@ -47,8 +52,9 @@ PHPUnit 10.5，配置见 `phpunit.xml.dist`。测试文件放 `tests/` 根目录
 
 - `Webman\Http\Request` — `new Request(array $inputs=[], array $files=[])`，方法
   `input($name,$default=null)` / `file($name)` / `all()`
-- `support\Redis` — 内存哈希，返回值镜像 predis：`hexists`→1/0、`hget`→?string、
-  `hset`→1(新)/0(覆盖)、`hdel`→1/0、`del`→1、`expire`→true
+- `support\Redis` — 内存字符串存储（秒传记录），返回值镜像 predis：`get`→?string（缺失为 null）、
+  `exists`→1/0、`setex`→true（同时记录 TTL）、`del`→1/0、`expire`→true、`keys($glob)`→string[]
+- `support\Redis` 的另一半 `hexists`/`hget`/`hdel` 支撑 legacy hash 回退用例
 - `support\Translation::addResource(...)` — 记录参数，不加载文件
 - `Webman\Event\Event::emit($name,$data)` — 记录到 `TestState::$events`
 - `ResponseStub` — `$status`/`$headers`/`$body`/`$type`(`raw|json|file|download`)/
@@ -59,13 +65,23 @@ PHPUnit 10.5，配置见 `phpunit.xml.dist`。测试文件放 `tests/` 根目录
 - 文件对象只需提供 `isValid()` 与 `getRealPath()`，可 `new class {...}` 匿名类，
   或用 `FileObject` 式小助手类（若需要可自建 `tests/Support/` 下，命名空间 `AetherUpload\Tests\Support`）
 - 分块文件落在 `base_path()/root_dir/group_dir/group_subdir/` 下；测试先 `mkdir -p`
-- `ConfigMapper` 为单例，`setUp` 里 `TestState::reset()` 后重新 `ConfigMapper::set(...)` 或
-  直接 `TestState::set(...)` 均可生效（ConfigMapper 每次 get 走 config()）
-- 秒传/事件相关：`instant_completion=true` 时 `RedisSavedPath::set` 写入后，
-  `TestState::$redisHash['aetherupload_resource'][$key]` 可断言
+- `ConfigMapper` 是**缓存配置的单例**（首次实例化时读一次 `config()`），改配置后必须调用
+  `TestState::resetConfigMapper()`，否则被测代码读到的还是旧值：
+  `TestState::reset(); TestState::normalizeConfig(); TestState::resetConfigMapper();`
+  （`set()` 的 key 用完整点号路径 `plugin.erikwang2013.aetherupload-webman.app.<属性>`）
+- 秒传/事件相关：`instant_completion=true` 时断言存储形态请走公开 API
+  （`RedisSavedPath::get(RedisSavedPath::getKey($group, $hash))`）；具体 key 前缀/TTL/legacy
+  回退的断言集中在 `tests/RedisSavedPathTest.php`，其它测试不要绑定存储细节
 
 ## 注意事项
 
 - 不 mock 被测类自身（Resource/PartialResource 等用真实实例+临时文件系统）
 - 涉及真实文件的操作统一用 `TestState::$basePath` 下的临时目录，`tearDown` 清理
 - 断言错误消息：`trans()` 返回 key 本身，如 `assertSame('invalid_resource_size', $e->getMessage())`
+- 上传相关的分块/请求脚手架直接复用 `tests/Support/UploadFixtures.php`（trait），别重写一遍
+- `commands/` 下的类不在 composer autoload 里，需 `require_once`；且它们继承 Symfony Console 的
+  `Command`，方法签名不兼容（如漏了 `execute(): int`）是**加载期 fatal**，会连带掀掉整个 PHPUnit 进程。
+  测试命令类时先在子进程里 `require` 一次做可加载性兜底，见 `tests/CleanUpDirectoryCommandTest.php`
+- 文件大小/`file_exists` 受 PHP stat 缓存影响：`fopen('ab')`+`fwrite` 或 `stream_copy_to_stream`
+  之后同一进程内 `filesize()` 可能返回旧值。需要验证"读到真实大小"的场景，在写入前后显式
+  `clearstatcache(true, $path)` 来构造缓存已被预热的确定性前置条件

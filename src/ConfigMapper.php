@@ -24,6 +24,7 @@ class ConfigMapper
     private $route_download;
     private $lax_mode;
     private $extra_mime_types;
+    private $x_accel_redirect;
     private $event_before_upload_complete;
     private $event_upload_complete;
     const PREFIX = 'plugin.erikwang2013.aetherupload-webman.app.';
@@ -59,12 +60,18 @@ class ConfigMapper
         $this->route_download = config(self::PREFIX.'route_download');
         $this->lax_mode = config(self::PREFIX.'lax_mode');
         $this->extra_mime_types = config(self::PREFIX.'extra_mime_types');
+        $this->x_accel_redirect = config(self::PREFIX.'x_accel_redirect');
 
         return $this;
     }
 
     private function applyGroupConfig($group)
     {
+        // 分组名参与存储路径的编码(SavedPathResolver::encode)，含下划线时解码会把它拆成多个字段，导致该分组下的资源全部404
+        if ( ! is_string($group) || str_contains($group, '_') ) {
+            throw new \Exception(trans('invalid_operation'));
+        }
+
         if ( ! in_array($group, array_keys(config(self::PREFIX.'groups'))) ) {
             throw new \Exception(trans('invalid_operation'));
         }

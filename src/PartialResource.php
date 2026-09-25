@@ -127,6 +127,9 @@ class PartialResource
 
     public function checkSize()
     {
+        // 同一请求内 filesize() 会命中 stat 缓存，append 后必须清缓存才能读到真实最终大小
+        clearstatcache(true, $this->realPath);
+
         $this->filterBySize(filesize($this->realPath));
     }
 

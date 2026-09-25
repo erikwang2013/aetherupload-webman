@@ -22,7 +22,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/composer
-          key: composer-php${{ matrix.php }}-${{ hashFiles('composer.lock') }}
+          key: composer-php${{ matrix.php }}-${{ hashFiles('composer.json') }}
           restore-keys: |
             composer-php${{ matrix.php }}-
 
@@ -34,13 +34,9 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: |
-          if [ "${{ matrix.php }}" = "8.0" ]; then
-            # composer.lock 锁定 phpunit 10.x（要求 PHP>=8.1），PHP 8.0 需重新解析出 phpunit 9.6
-            composer update --no-interaction --prefer-dist phpunit/phpunit
-          else
-            composer install --no-interaction --prefer-dist
-          fi
+        # 本仓库不提交 composer.lock（见 .gitignore），CI 上没有 lock 可用，
+        # 因此统一按当前 PHP 版本解析依赖：8.0 得到 phpunit 9.6，8.1+ 得到 10.5。
+        run: composer update --no-interaction --prefer-dist
 
       - name: Run test suite
         run: vendor/bin/phpunit --no-coverage

@@ -18,7 +18,7 @@ class AetherUploadListGroups extends Command
      * @param OutputInterface $output
      * @return int
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
 
         $rootDir = base_path().DIRECTORY_SEPARATOR.config(ConfigMapper::PREFIX.'root_dir');
@@ -52,6 +52,13 @@ class AetherUploadListGroups extends Command
             $output->writeln('Group-Directory List:');
 
             foreach ( config(ConfigMapper::PREFIX.'groups') as $groupName => $groupArr ) {
+                if ( str_contains($groupName, '_') ) {
+                    // 分组名参与存储路径的编码，含下划线时该分组下的资源无法被定位，必须改名
+                    $output->writeln('Invalid group name "' . $groupName . '": underscore is not allowed, rename the group.');
+
+                    continue;
+                }
+
                 if ( is_dir($rootDir . DIRECTORY_SEPARATOR . $groupArr['group_dir']) ) {
                     $output->writeln($groupName . ' - ' . $rootDir.DIRECTORY_SEPARATOR.$groupArr['group_dir']);
                 }

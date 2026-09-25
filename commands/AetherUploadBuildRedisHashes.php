@@ -8,6 +8,7 @@ use Symfony\Component\Console\Command\Command;
 use AetherUpload\ConfigMapper;
 use AetherUpload\SavedPathResolver;
 use AetherUpload\RedisSavedPath;
+use AetherUpload\Util;
 
 
 class AetherUploadBuildRedisHashes extends Command
@@ -21,7 +22,7 @@ class AetherUploadBuildRedisHashes extends Command
      * @param OutputInterface $output
      * @return int
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $savedPathArr = [];
         $totalCount = 0;
@@ -31,6 +32,13 @@ class AetherUploadBuildRedisHashes extends Command
             RedisSavedPath::deleteAll();
 
             foreach ( config(ConfigMapper::PREFIX.'groups') as $groupName => $group ) {
+
+                // 分组名参与存储路径的编码，含下划线时写进去的记录永远解码不回来，跳过并告警而不是报成功
+                if ( ! is_string($groupName) || str_contains($groupName, '_') ) {
+                    $output->writeln('Invalid group name "' . $groupName . '": underscore is not allowed, skipped.');
+
+                    continue;
+                }
 
                 $path = base_path().DIRECTORY_SEPARATOR.ConfigMapper::get('root_dir') . DIRECTORY_SEPARATOR . $group['group_dir'];
 
@@ -43,7 +51,14 @@ class AetherUploadBuildRedisHashes extends Command
                             continue;
                         }
 
-                        $savedPathArr[RedisSavedPath::getKey($groupName, pathinfo($fileName, PATHINFO_FILENAME))] = SavedPathResolver::encode($groupName, basename($subDirName), basename($fileName));
+                        $hash = pathinfo($fileName, PATHINFO_FILENAME);
+
+                        // 目录里可能存在非本插件命名的文件（.DS_Store、.htaccess、带空格的临时文件等），跳过而不是中断整个重建
+                        if ( Util::isSafePathComponent($hash, false, 64) === false ) {
+                            continue;
+                        }
+
+                        $savedPathArr[RedisSavedPath::getKey($groupName, $hash)] = SavedPathResolver::encode($groupName, basename($subDirName), basename($fileName));
                         $totalCount++;
 
                         if ( count($savedPathArr) >= 1000 ) {

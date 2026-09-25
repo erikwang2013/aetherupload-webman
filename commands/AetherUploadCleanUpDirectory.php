@@ -28,7 +28,7 @@ class AetherUploadCleanUpDirectory extends Command
      * @param OutputInterface $output
      * @return int
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $invalidHeaders = [];
         $invalidFiles = [];
@@ -51,9 +51,8 @@ class AetherUploadCleanUpDirectory extends Command
                     continue;
                 }
 
-                $createTime = substr(basename($header), 0, 10);
-
-                if ( $createTime < $dueTime ) {
+                // 临时文件名是随机串，不再带时间戳前缀，只能按真实修改时间判断
+                if ( filemtime($header) < $dueTime ) {
                     $invalidHeaders[] = $header;
                 }
             }
@@ -78,9 +77,8 @@ class AetherUploadCleanUpDirectory extends Command
                             continue;
                         }
 
-                        $createTime = substr($fileName = basename($file, '.part'), 0, 10);
-
-                        if ( $createTime < $dueTime ) {
+                        // 同上：按真实修改时间判断，避免误删正在上传的分块文件
+                        if ( filemtime($file) < $dueTime ) {
                             $invalidFiles[] = $file;
                         }
                     }
