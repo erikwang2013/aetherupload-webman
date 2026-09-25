@@ -130,7 +130,7 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 | `aetherupload:build` 先清空索引再扫描，遇 `.DS_Store` 之类垃圾文件即中止 | P0，秒传索引被清空 | `BuildRedisHashesCommandTest` |
 | 三个控制台命令在 symfony/console 7 下缺 `execute(): int` | 加载即致命错误 | 子进程加载栅栏 |
 | `ConfigMapper` 单例在常驻进程 / 协程下跨请求串组 | 并发请求读到别人的分组配置 | `RequestIsolationTest` |
-| `Install` 忽略 `root_dir`；未绑定时抛「尚未绑定宿主适配器」 | 自定义根目录建错位置；每次 `composer require` 都失败 | `InstallRootDirTest` / `InstallFreshAppTest` |
+| `Install` 忽略 `root_dir`；未绑定适配器时 `install()` / `uninstall()` 抛「尚未绑定宿主适配器」 | 自定义根目录建错位置；`composer require` 与 `composer remove` 都失败 | `InstallRootDirTest` / `InstallFreshAppTest` |
 | `X-Accel-Redirect` 重复包含 `root_dir` | nginx 直发 404 | `XAccelRedirectTest` |
 | `PartialResource::createGroupSubDir()` 的 `is_dir` → `mkdir` TOCTOU | 并发下目录创建竞态 | 协程级复现（Hyperf） |
 

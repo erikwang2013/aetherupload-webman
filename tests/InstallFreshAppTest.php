@@ -45,6 +45,27 @@ class InstallFreshAppTest extends TestCase
         $this->assertDirectoryExists(TestState::$basePath . '/storage/app/aetherupload/_header');
     }
 
+    /**
+     * 守护：composer 卸载包时宿主同样没启动（post-package-uninstall → support\Plugin::uninstall
+     * → \AetherUpload\Install::uninstall()），uninstall() 必须和 install() 一样自己兜底绑定。
+     */
+    public function testUninstallWorksWhenRuntimeIsNotBoundYet(): void
+    {
+        Install::install(); // 先装一次：待删的目录正是这么来的（真实卸载时它们已经存在）
+
+        Runtime::reset(); // 模拟卸载那一刻：webman 未启动、route.php 未被加载，没人 bind
+        $this->assertFalse(Runtime::isBound(), '前置条件：本用例模拟的是宿主尚未绑定适配器的时刻');
+
+        Install::uninstall();
+
+        $this->assertTrue(Runtime::isBound(), 'uninstall() 之后应已绑定 webman 适配器');
+        $base = TestState::$basePath;
+        $this->assertDirectoryDoesNotExist($base . '/config/plugin/erikwang2013/aetherupload-webman');
+        $this->assertDirectoryDoesNotExist($base . '/public/vendor/aetherupload/js');
+        $this->assertDirectoryDoesNotExist($base . '/app/command');
+        $this->assertDirectoryDoesNotExist($base . '/resource/translations/aetherupload');
+    }
+
     /** 守护：宿主配置尚未加载时，仍要按插件自带默认配置把分组目录建出来 */
     public function testInstallCreatesGroupDirsWhenHostConfigIsNotLoadedYet(): void
     {

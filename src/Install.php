@@ -24,12 +24,7 @@ class Install
      */
     public static function install()
     {
-        // 本方法由 webman 的 composer 脚本（post-package-install → support\Plugin::install）调用，
-        // 那一刻宿主应用还没启动、route.php 还没被加载，因此 Runtime 尚未绑定适配器。
-        // 这里是 webman 专属安装器（见 WEBMAN_PLUGIN 常量），自己兜底绑定，否则 `composer require` 就报错。
-        if ( ! Runtime::isBound() ) {
-            Runtime::bind(new Adapter\Webman\WebmanAdapter());
-        }
+        self::ensureRuntime();
 
         // 根目录与分组目录都是配置项（root_dir、groups.<name>.group_dir），不能硬编码。
         // 全新安装时宿主的 config() 里还没有本插件的配置（配置文件正是本次安装才复制进去的），
@@ -91,7 +86,24 @@ class Install
      */
     public static function uninstall()
     {
+        self::ensureRuntime();
+
         self::uninstallByRelation();
+    }
+
+    /**
+     * 兜底绑定 webman 适配器。
+     *
+     * install()/uninstall() 都由 webman 的 composer 脚本调用（post-package-install /
+     * post-package-uninstall → support\Plugin::install / ::uninstall）。那一刻宿主应用还没启动、
+     * route.php 还没被加载 —— 而 webman 下 bind() 只发生在 route.php 里 —— 因此 Runtime 是空的。
+     * 不兜底的话 `composer require` 与 `composer remove` 都会直接抛「尚未绑定宿主适配器」。
+     */
+    private static function ensureRuntime(): void
+    {
+        if ( ! Runtime::isBound() ) {
+            Runtime::bind(new Adapter\Webman\WebmanAdapter());
+        }
     }
 
     /**
