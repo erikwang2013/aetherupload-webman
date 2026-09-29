@@ -12,7 +12,7 @@ Mengunggah berkas besar langsung dari browser tidak bisa lepas dari tiga masalah
 
 **Bentuknya**
 
-Sebuah paket composer, dengan **inti yang terpisah dari framework host**: kode yang sama dapat dipakai di webman, PHP native (tanpa framework), Laravel, ThinkPHP, Symfony, Slim, Hyperf, dan Yii2 (lihat [Framework yang Didukung](#framework-yang-didukung)). Konfigurasi, rute, perintah konsol, berkas bahasa, dan skrip frontend milik host didistribusikan oleh perintah instalasi / publikasi; tidak bergantung pada basis data; Redis hanya diperlukan saat unggah instan dinyalakan, jadi termasuk dependensi opsional.
+Sebuah paket composer, dengan **inti yang terpisah dari framework host**: kode yang sama dapat dipakai di webman, PHP native (tanpa framework), Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2, dan Yii3 (lihat [Framework yang Didukung](#framework-yang-didukung)). Konfigurasi, rute, perintah konsol, berkas bahasa, dan skrip frontend milik host didistribusikan oleh perintah instalasi / publikasi; tidak bergantung pada basis data; Redis hanya diperlukan saat unggah instan dinyalakan, jadi termasuk dependensi opsional.
 
 ![Halaman contoh](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -25,8 +25,8 @@ aetherupload-webman/
 │   ├── RequestContext.php          status yang dapat berubah per request / per coroutine (snapshot konfigurasi grup, bahasa yang sudah dimuat); pada proses persisten request bersamaan tidak saling tertukar grupnya
 │   ├── Contract/                   11 antarmuka (konfigurasi / terjemahan / request / berkas unggahan / respons / Redis / event / jalur / filesystem / konteks / adapter)
 │   ├── Kernel/                     implementasi bawaan di sisi inti: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
-│   ├── Console/                    logika bisnis tiga perintah (Runner) + pintu masuk siap pakai untuk host tanpa konvensi konsol, tujuh kerangka perintah memakai salinan yang sama
-│   ├── Adapter/                    delapan adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Console/                    logika bisnis tiga perintah (Runner) + pintu masuk siap pakai untuk host tanpa konvensi konsol, sembilan kerangka perintah memakai salinan yang sama
+│   ├── Adapter/                    sembilan adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
 │   ├── UploadController.php        pintu masuk unggah: preprocess (prapemrosesan / penentuan unggah instan) dan saveChunk (penulisan chunk)
 │   ├── ResourceController.php      pintu masuk tampilan dan unduhan: display / download, dapat diserahkan ke nginx untuk pengiriman langsung
 │   ├── PartialResource.php         inti berkas chunk: penyusunan jalur, penambahan per chunk, penggantian nama, verifikasi ukuran dan tipe
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  bersihkan berkas sementara kedaluwarsa berdasarkan mtime
 ├── config/
 │   ├── app.php                   konfigurasi plugin webman: grup, rute, middleware, dan berbagai sakelar
-│   ├── aetherupload.php          konfigurasi yang sama tanpa ketergantungan framework, menjadi basis bagi tujuh adapter lainnya (kedua jalur dikunci agar konsisten oleh ConfigParityTest)
+│   ├── aetherupload.php          konfigurasi yang sama tanpa ketergantungan framework, menjadi basis bagi delapan adapter lainnya (kedua jalur dikunci agar konsisten oleh ConfigParityTest)
 │   └── route.php                 empat rute + titik pasang middleware masing-masing
 ├── docs/                         dokumentasi, gambar, dan skrip frontend
 │   ├── aetherupload-architecture.svg  diagram arsitektur desain
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       kode sumber halaman contoh, dapat langsung dijadikan acuan saat integrasi
 ├── tests/
 │   ├── *.php                     kasus uji unit PHPUnit (host memakai test double, PHP 8.0–8.4, dua versi PHPUnit: 9.6 dan 10.5)
-│   └── Integration/<fw>/         rangkaian end-to-end, satu set per framework: benar-benar memasang framework dan menjalankan jalur unggah sungguhan (webman menjalankan layanan sungguhan lewat phpunit.xml, tujuh lainnya lewat ci.sh masing-masing)
+│   └── Integration/<fw>/         rangkaian end-to-end, satu set per framework: benar-benar memasang framework dan menjalankan jalur unggah sungguhan (webman menjalankan layanan sungguhan lewat phpunit.xml, delapan lainnya lewat ci.sh masing-masing)
 ├── uploads/                      direktori warisan, tidak dipakai saat plugin berjalan
 └── composer.json
 ```
@@ -137,6 +137,7 @@ Inti (chunk, lanjut-unggah, unggah instan, verifikasi, pengalamatan) terpisah da
 | Slim | Satu baris `Bootstrap::create()` | `tests/Integration/slim/` |
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | Pasang Bootstrap di `bootstrap` aplikasi | `tests/Integration/yii/` |
+| Yii3 | Satu baris `Bootstrap::bind()` di skrip pintu masuk + perluasan `Bootstrap::routes()` di berkas rute | `tests/Integration/yii3/` |
 
 > Kata `webman` pada nama paket adalah warisan sejarah (plugin ini awalnya hanya mendukung webman) dan tidak memengaruhi pemakaiannya di host lain.
 
@@ -148,7 +149,7 @@ Apa pun host-nya, setelah paket terpasang ada dua tindakan yang **wajib** dilaku
    **Tanpa ini pasti gagal**: `createGroupSubDir()` di inti adalah `mkdir` non-rekursif, sehingga bila direktori induknya tidak ada ia langsung mengembalikan false, dan galatnya diterjemahkan secara seragam menjadi `upload_error` yang umum sehingga sulit terlihat bahwa masalahnya ada di direktori.
 2. **Publikasikan berkas**: `aetherupload:publish` (untuk Laravel gunakan `vendor:publish --tag=aetherupload-*`) — menaruh berkas bahasa dan `js` frontend ke lokasi yang dapat diakses host.
 
-> Pemisah pada nama perintah mengikuti konvensi konsol masing-masing framework: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / PHP native memakai `:`, sedangkan **Yii memakai `/`** (`php yii aetherupload/groups`). Contoh tiap framework di bawah ini dapat disalin dan dijalankan langsung.
+> Pemisah pada nama perintah mengikuti konvensi konsol masing-masing framework: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / PHP native memakai `:`, sedangkan **Yii2 dan Yii3 memakai `/`** (`php yii aetherupload/groups`). Contoh tiap framework di bawah ini dapat disalin dan dijalankan langsung.
 
 ## Integrasi per Framework
 
@@ -293,6 +294,47 @@ php yii aetherupload/publish
 ```
 > Lokasi publikasinya adalah `vendor/aetherupload/js` di bawah **akar dokumen** (akar dokumen webman adalah `public/`, sedangkan Yii `web/`): halaman contoh merujuk jalur absolut `/vendor/aetherupload/js/…` yang bermakna "akar dokumen", karena itu `YiiPaths::assetPath()` mengutamakan alias `@webroot` milik host dan jatuh ke `<app>/web` bila tidak didapatkan.
 
+**Yii3**
+
+Yii3 (generasi yiisoft/*) dan Yii2 adalah dua hal yang berbeda: kontainer PSR-7 / PSR-15 / PSR-11 + grup konfigurasi `yiisoft/config`, tanpa fungsi global dan tanpa `Yii::$app`. Integrasinya menyentuh tiga berkas:
+
+```php
+// 1) public/index.php —— pengikatan harus lebih awal dari runner (runner akan membangun kontainer dan menjalankan bootstrap)
+require __DIR__ . '/../vendor/autoload.php';
+
+\AetherUpload\Adapter\Yii3\Bootstrap::bind(
+    require __DIR__ . '/../config/aetherupload.php',   // dihasilkan oleh aetherupload/publish
+    $root = dirname(__DIR__),
+    ['redis' => static fn () => new \Predis\Client(['database' => 0])]   // diperlukan untuk unggah instan, opsional
+);
+
+(new \Yiisoft\Yii\Runner\Http\HttpApplicationRunner($root))->run();
+```
+
+```php
+// 2) config/common/routes.php —— empat rute aplikasi (konfigurasi diteruskan secara eksplisit, lihat di bawah)
+return [
+    // …rute milik host sendiri…
+    ...\AetherUpload\Adapter\Yii3\Bootstrap::routes(require __DIR__ . '/aetherupload.php'),
+];
+```
+
+```php
+// 3) config/common/params.php —— perintah konsol
+'yiisoft/yii-console' => ['commands' => \AetherUpload\Adapter\Yii3\Bootstrap::consoleCommands()],
+```
+
+```bash
+php yii aetherupload/groups     # perhatikan juga: pemisah konsol Yii3 adalah "/"
+php yii aetherupload/publish
+```
+
+> **Tumpukan middleware tidak perlu diubah**: action pada keempat rute langsung menerima `ServerRequestInterface` (yiisoft/middleware-dispatcher menyuntikkan berdasarkan tipe), dan adapter mendaftarkan serta membersihkan request saat ini di dalam action.
+> Konfigurasi `Bootstrap::routes()` adalah **argumen eksplisit**: berkas rute sudah di-`require` saat pembangunan kontainer, dan pada saat itu `Runtime` belum terikat, sehingga membaca `Runtime::config()` pasti melempar "adapter host belum terikat".
+> Pintu masuk konsol (`yii`) juga memanggil `Bootstrap::bind()` lebih dahulu; tabel perintah diserahkan kepada params `yiisoft/yii-console`.
+> Lokasi publikasi: `resource/translations/aetherupload` (berkas bahasa) dan `public/vendor/aetherupload/js` (aset frontend) —— akar dokumen templat aplikasi Yii3 memang `public/`.
+> Di bawah Yii3, `middleware_*` di dalam konfigurasi berbentuk seperti yang dikenali yiisoft/router (nama kelas middleware PSR-15, instans, atau callable `function ($request, $handler)`), lalu dipasang ke rute yang bersangkutan.
+
 **webman**
 
 ```bash
@@ -303,7 +345,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > Catatan: untuk mengubah opsi konfigurasi terkait, edit `config/plugin/erikwang2013/aetherupload-webman/app.php`.
 
-> Tujuh host lainnya harus mendaftarkan adapter terlebih dahulu, lalu menjalankan "dua langkah umum". **webman juga menyediakan perintah yang sama** (`php webman aetherupload:groups` / `aetherupload:publish`), hanya saja keduanya sudah dijalankan otomatis saat instalasi.
+> Delapan host lainnya harus mendaftarkan adapter terlebih dahulu, lalu menjalankan "dua langkah umum". **webman juga menyediakan perintah yang sama** (`php webman aetherupload:groups` / `aetherupload:publish`), hanya saja keduanya sudah dijalankan otomatis saat instalasi.
 
 # Penggunaan  
 **Unggah berkas**  

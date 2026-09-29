@@ -12,7 +12,7 @@
 
 **এর গঠন**
 
-একটি composer package, যেখানে **kernel host framework থেকে আলাদা**: একই কোড webman, নেটিভ PHP (framework ছাড়া), Laravel, ThinkPHP, Symfony, Slim, Hyperf ও Yii2-এ ব্যবহার করা যায় (দেখুন [সমর্থিত ফ্রেমওয়ার্ক](#সমর্থিত-ফ্রেমওয়ার্ক))। host-এর configuration, route, console command, language file ও frontend script install / publish command দিয়ে বিতরণ করা হয়; database-এর উপর কোনো নির্ভরতা নেই; Redis কেবল Instant Upload চালু থাকলে দরকার, অর্থাৎ এটি ঐচ্ছিক নির্ভরতা।
+একটি composer package, যেখানে **kernel host framework থেকে আলাদা**: একই কোড webman, নেটিভ PHP (framework ছাড়া), Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2 ও Yii3-এ ব্যবহার করা যায় (দেখুন [সমর্থিত ফ্রেমওয়ার্ক](#সমর্থিত-ফ্রেমওয়ার্ক))। host-এর configuration, route, console command, language file ও frontend script install / publish command দিয়ে বিতরণ করা হয়; database-এর উপর কোনো নির্ভরতা নেই; Redis কেবল Instant Upload চালু থাকলে দরকার, অর্থাৎ এটি ঐচ্ছিক নির্ভরতা।
 
 ![উদাহরণ পৃষ্ঠা](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -25,8 +25,8 @@ aetherupload-webman/
 │   ├── RequestContext.php          প্রতি request / প্রতি coroutine-এর mutable state (group configuration snapshot, লোড করা ভাষা); স্থায়ী process-এ সমান্তরাল request-গুলো একে অন্যের group মেশে না
 │   ├── Contract/                   ১১টি interface (configuration / translation / request / uploaded file / response / Redis / event / path / filesystem / context / adapter)
 │   ├── Kernel/                     kernel পক্ষের default implementation: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
-│   ├── Console/                    তিনটি command-এর business logic (Runner) + console রীতি নেই এমন host-এর জন্য প্রস্তুত entry; সাতটি command shell একই অংশ ভাগ করে নেয়
-│   ├── Adapter/                    আটটি adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Console/                    তিনটি command-এর business logic (Runner) + console রীতি নেই এমন host-এর জন্য প্রস্তুত entry; নয়টি command shell একই অংশ ভাগ করে নেয়
+│   ├── Adapter/                    নয়টি adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
 │   ├── UploadController.php        upload-এর entry point: preprocess (পূর্বপ্রক্রিয়া / Instant Upload যাচাই) ও saveChunk (chunk লেখা)
 │   ├── ResourceController.php      প্রদর্শন ও download-এর entry point: display / download; nginx-কে সরাসরি পাঠানোর সুবিধাও আছে
 │   ├── PartialResource.php         chunk file নিজেই: path তৈরি, এক chunk ধরে ধরে যুক্ত করা, rename, size ও type যাচাই
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  mtime অনুযায়ী মেয়াদোত্তীর্ণ temporary file পরিষ্কার করে
 ├── config/
 │   ├── app.php                   webman plugin configuration: group, route, middleware ও নানা switch
-│   ├── aetherupload.php          framework-নিরপেক্ষ একই configuration, বাকি সাতটি adapter-এর baseline (দুই path-এর মিল ConfigParityTest দিয়ে লক করা)
+│   ├── aetherupload.php          framework-নিরপেক্ষ একই configuration, বাকি আটটি adapter-এর baseline (দুই path-এর মিল ConfigParityTest দিয়ে লক করা)
 │   └── route.php                 চারটি route + প্রতিটির middleware সংযুক্তির জায়গা
 ├── docs/                         documentation, ছবি ও frontend script
 │   ├── aetherupload-architecture.svg  ডিজাইন আর্কিটেকচার চিত্র
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       example page-এর source; সংযুক্ত করার সময় সরাসরি দেখে নেওয়া যায়
 ├── tests/
 │   ├── *.php                     PHPUnit unit test (host-এর জন্য stand-in, PHP 8.0–8.4, PHPUnit 9.6 ও 10.5 উভয় সংস্করণ)
-│   └── Integration/<fw>/         end-to-end suite, প্রতিটি framework-এর জন্য আলাদা: সত্যিকারের framework install করে সত্যিকারের upload path চালানো হয় (webman phpunit.xml দিয়ে আসল service তোলে, বাকি সাতটি নিজের ci.sh চালায়)
+│   └── Integration/<fw>/         end-to-end suite, প্রতিটি framework-এর জন্য আলাদা: সত্যিকারের framework install করে সত্যিকারের upload path চালানো হয় (webman phpunit.xml দিয়ে আসল service তোলে, বাকি আটটি নিজের ci.sh চালায়)
 ├── uploads/                      পুরনো directory, plugin চলার সময় এটি ব্যবহৃত হয় না
 └── composer.json
 ```
@@ -137,6 +137,7 @@ kernel (chunk, resume, Instant Upload, যাচাই, addressing) host framewo
 | Slim | এক লাইন `Bootstrap::create()` | `tests/Integration/slim/` |
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | application-এর `bootstrap`-এ Bootstrap যুক্ত করা | `tests/Integration/yii/` |
+| Yii3 | entry script-এ এক লাইন `Bootstrap::bind()` + route file-এ `Bootstrap::routes()` ছড়িয়ে দেওয়া | `tests/Integration/yii3/` |
 
 > package-এর নামে `webman` থাকার কারণ ঐতিহাসিক (এই plugin প্রথমে কেবল webman সমর্থন করত); বাকি host-গুলোতে ব্যবহারে এর কোনো প্রভাব নেই।
 
@@ -148,7 +149,7 @@ kernel (chunk, resume, Instant Upload, যাচাই, addressing) host framewo
    **না বানালে অবশ্যই ব্যর্থ হবে**: kernel-এর `createGroupSubDir()` recursive নয় এমন `mkdir` ব্যবহার করে; parent directory না থাকলে সরাসরি false ফেরত দেয়, আর error-টি সব ক্ষেত্রেই সাধারণ `upload_error`-এ অনূদিত হয় — তাই সমস্যা খুঁজতে গিয়ে directory-র বিষয়টি বোঝা যায় না।
 2. **file publish করা**: `aetherupload:publish` (Laravel-এ `vendor:publish --tag=aetherupload-*`) —— language file ও frontend `js` host যেখানে পৌঁছাতে পারে এমন জায়গায় রাখে।
 
-> command নামের separator প্রতিটি framework-এর console রীতিনীতি অনুসরণ করে: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / নেটিভ PHP-তে `:`, আর **Yii-তে `/`** (`php yii aetherupload/groups`)। নিচে প্রতিটির উদাহরণ সরাসরি copy করে চালানো যায়।
+> command নামের separator প্রতিটি framework-এর console রীতিনীতি অনুসরণ করে: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / নেটিভ PHP-তে `:`, আর **Yii2 ও Yii3-তে `/`** (`php yii aetherupload/groups`)। নিচে প্রতিটির উদাহরণ সরাসরি copy করে চালানো যায়।
 
 ## প্রতিটি framework-এ সংযুক্ত করা
 
@@ -289,6 +290,47 @@ php yii aetherupload/publish
 ```
 > publish-এর গন্তব্য **document root**-এর নিচে `vendor/aetherupload/js` (webman-এর document root হলো `public/`, Yii-র `web/`): example page যে absolute path `/vendor/aetherupload/js/…` ব্যবহার করে তার অর্থ "document root", তাই `YiiPaths::assetPath()` প্রথমে host-এর `@webroot` alias নেয়, না পেলে `<app>/web`-এ ফিরে যায়।
 
+**Yii3**
+
+Yii3 (yiisoft/* প্রজন্ম) আর Yii2 দুটি আলাদা জিনিস: PSR-7 / PSR-15 / PSR-11 container + `yiisoft/config` configuration group —— এখানে কোনো global function নেই, `Yii::$app`-ও নেই। সংযুক্ত করতে তিনটি file বদলাতে হয়:
+
+```php
+// 1) public/index.php —— binding অবশ্যই runner-এর আগে (runner container তৈরি করে, bootstrap চালায়)
+require __DIR__ . '/../vendor/autoload.php';
+
+\AetherUpload\Adapter\Yii3\Bootstrap::bind(
+    require __DIR__ . '/../config/aetherupload.php',   // aetherupload/publish দিয়ে তৈরি
+    $root = dirname(__DIR__),
+    ['redis' => static fn () => new \Predis\Client(['database' => 0])]   // Instant Upload-এর জন্য দরকার, ঐচ্ছিক
+);
+
+(new \Yiisoft\Yii\Runner\Http\HttpApplicationRunner($root))->run();
+```
+
+```php
+// 2) config/common/routes.php —— চারটি business route (configuration স্পষ্টভাবে পাস করা, নিচে দেখুন)
+return [
+    // …host-এর নিজের route…
+    ...\AetherUpload\Adapter\Yii3\Bootstrap::routes(require __DIR__ . '/aetherupload.php'),
+];
+```
+
+```php
+// 3) config/common/params.php —— console command
+'yiisoft/yii-console' => ['commands' => \AetherUpload\Adapter\Yii3\Bootstrap::consoleCommands()],
+```
+
+```bash
+php yii aetherupload/groups     # একইভাবে খেয়াল রাখুন: Yii3-এর console separator-ও "/"
+php yii aetherupload/publish
+```
+
+> **middleware stack বদলানোর দরকার নেই**: চারটি route-এর action সরাসরি `ServerRequestInterface` নেয় (yiisoft/middleware-dispatcher type অনুযায়ী inject করে), adapter action-এর ভিতরেই বর্তমান request রেজিস্টার করে ও পরে পরিষ্কার করে।
+> `Bootstrap::routes()`-এর configuration **স্পষ্টভাবে পাস করা argument**: route file container তৈরির সময়েই `require` হয়, সেই মুহূর্তে `Runtime` এখনও bind করা থাকে না, তাই `Runtime::config()` পড়লে নিশ্চিতভাবে "host adapter এখনও bind করা হয়নি" error আসে।
+> console entry (`yii`)-ও প্রথমে `Bootstrap::bind()` করে; command তালিকা `yiisoft/yii-console`-এর params-এ দেওয়া হয়।
+> publish-এর গন্তব্য: `resource/translations/aetherupload` (language file) ও `public/vendor/aetherupload/js` (frontend resource) —— Yii3 application template-এর document root হলো `public/`।
+> configuration-এর `middleware_*` Yii3-তে yiisoft/router চেনে এমন রূপে থাকে (PSR-15 middleware class name, instance, বা `function ($request, $handler)` callable), সংশ্লিষ্ট route-এ সংযুক্ত হয়।
+
 **webman**
 
 ```bash
@@ -299,7 +341,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > সংকেত: সংশ্লিষ্ট configuration option বদলাতে `config/plugin/erikwang2013/aetherupload-webman/app.php` সম্পাদনা করুন।
 
-> বাকি সাতটি host-এ প্রথমে adapter রেজিস্টার করে তারপর "সাধারণ দুটি ধাপ" চালাতে হবে। **webman-ও একই command দেয়** (`php webman aetherupload:groups` / `aetherupload:publish`), কেবল install-এর সময় তা একবার স্বয়ংক্রিয়ভাবে চলে গেছে।
+> বাকি আটটি host-এ প্রথমে adapter রেজিস্টার করে তারপর "সাধারণ দুটি ধাপ" চালাতে হবে। **webman-ও একই command দেয়** (`php webman aetherupload:groups` / `aetherupload:publish`), কেবল install-এর সময় তা একবার স্বয়ংক্রিয়ভাবে চলে গেছে।
 
 # ব্যবহার  
 **File upload**  

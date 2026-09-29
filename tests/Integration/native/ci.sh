@@ -5,7 +5,7 @@
 #   bash tests/Integration/native/ci.sh
 #   bash tests/Integration/native/ci.sh --filter testFullUploadFlow   # 多余参数透传给 phpunit
 #
-# 与另外六个框架最大的不同：**没有框架要装**。原生 PHP 的宿主就是 PHP 自己，
+# 与另外八个框架最大的不同：**没有框架要装**。原生 PHP 的宿主就是 PHP 自己，
 # 所以临时应用只有三个文件（public/index.php、config/aetherupload.php、bin/aetherupload），
 # 全部由 tests/Integration/native/App.php::ensure() 生成。
 #

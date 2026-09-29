@@ -21,7 +21,7 @@ use think\console\Output;
  * （见 AetherUploadService::registerDefaultConfig()，与 Laravel 的 mergeConfigFrom 同语义），
  * 宿主只需在 config/aetherupload.php 里写要覆盖的键。
  *
- * 逻辑不进 Runner：与 Symfony/Hyperf/Yii 三家的 publish 命令同构（各自两条 copyDir），
+ * 逻辑不进 Runner：与 Symfony/Hyperf/Yii/Yii3 四家的 publish 命令同构（各自两条 copyDir），
  * 抽到 src/Console/ 只是把两行代码换个地方摆，没有第二个调用方。
  */
 class PublishCommand extends Command

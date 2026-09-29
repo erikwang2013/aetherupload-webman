@@ -10,7 +10,7 @@ use AetherUpload\Contract\PathsInterface;
  * 默认落点与 webman 侧保持一致，安装分发（把包的 translations/ 与 docs/js/ 拷过来）的脚本
  * 在几种宿主下可以写同一份。
  *
- * 用在 Slim 与原生 PHP 上；有约定的适配器各写各的（webman 从 base_path() 取、
+ * 用在 Slim、Yii3 与原生 PHP 上；有约定的适配器各写各的（webman 从 base_path() 取、
  * Yii 取 @webroot 别名、ThinkPHP 走 app 目录）。
  */
 class BasePaths implements PathsInterface

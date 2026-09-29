@@ -13,7 +13,7 @@ use AetherUpload\Contract\RedisInterface;
  * （hget 缺失是 null/false、hexists 命中是 int/bool），内核既有的分支同时兼容两者，
  * 适配器若擅自转换反而会破坏那套判断。
  *
- * 用在 Slim 与原生 PHP 上：这两个宿主都没有「从容器里取 redis 服务」的约定，
+ * 用在 Slim、Yii3 与原生 PHP 上：这三个宿主都没有「从容器里取 redis 服务」的约定，
  * 使用者直接把客户端交进来。有宿主容器的适配器（Laravel/Hyperf/Yii/ThinkPHP/Symfony）
  * 各写各的，因为它们的差别正是「怎么从宿主拿到客户端」。
  */

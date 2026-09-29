@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
  * 原生 PHP 真实端到端：真 SAPI（php -S）+ 真 curl + 真文件系统 + 真 redis。
  *
  * 这一层才是「原生 PHP 可用」的证据；tests/ 下的单元用例用的是替身，只覆盖内核逻辑。
- * 应用准备与装配见同目录 App.php，断言清单与其余七个宿主共用 FlowAssertions。
+ * 应用准备与装配见同目录 App.php，断言清单与其余八个宿主共用 FlowAssertions。
  */
 class NativeFlowTest extends TestCase
 {
@@ -62,7 +62,7 @@ class NativeFlowTest extends TestCase
     /**
      * 内置路由的行为：未命中 404、路径命中但方法不对 405 + Allow。
      *
-     * 其余七个宿主由各自的路由器给出同样的两种结果，这里必须自己实现 —— 所以要有断言钉住。
+     * 其余八个宿主由各自的路由器给出同样的两种结果，这里必须自己实现 —— 所以要有断言钉住。
      */
     public function testRouterMethodAndNotFound(): void
     {

@@ -16,7 +16,7 @@ use Symfony\Component\Console\Application as SymfonyApplication;
  *     \AetherUpload\Adapter\Slim\Bootstrap::bind(require __DIR__ . '/../config/aetherupload.php', dirname(__DIR__));
  *     exit((new \AetherUpload\Adapter\Slim\Console\Application())->run());
  *
- * 业务逻辑不在这里：三条命令的实现在 src/Console/*Runner（七个框架共用同一份），
+ * 业务逻辑不在这里：三条命令的实现在 src/Console/*Runner（九个框架共用同一份），
  * 本类只负责拼装命令壳与 publish（复制两个目录）。Slim 与原生 PHP 的入口类都继承本类。
  */
 class Application extends SymfonyApplication
@@ -72,8 +72,8 @@ class Application extends SymfonyApplication
      * 不发布配置：适配器已把包内 config/aetherupload.php 作为基线（顶层浅合并），
      * 使用者只需把自己要覆盖的键写进传给 Bootstrap 的数组。
      *
-     * 逻辑不进 src/Console/*Runner：那三个 Runner 是六个框架共享的业务逻辑，
-     * 这里只是「复制两个目录」，与 Symfony/ThinkPHP/Hyperf/Yii 的 publish 命令同构。
+     * 逻辑不进 src/Console/*Runner：那三个 Runner 是九个框架共享的业务逻辑，
+     * 这里只是「复制两个目录」，与 Symfony/ThinkPHP/Hyperf/Yii/Yii3 的 publish 命令同构。
      */
     protected static function publish(callable $write): int
     {

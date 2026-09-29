@@ -9,7 +9,7 @@ namespace AetherUpload\Contract;
  * 都会在同一个进程里交错处理多个请求，任何进程级可变状态都会互相覆盖。
  *
  * 实现约定：
- *  - webman / Laravel / Symfony / ThinkPHP / Yii / Slim：退化为静态数组（PHP-FPM 或每请求
+ *  - webman / Laravel / Symfony / ThinkPHP / Yii / Yii3 / Slim / 原生 PHP：退化为静态数组（PHP-FPM 或每请求
  *    重建进程模型下天然隔离）
  *  - Hyperf：交给 Hyperf\Context\Context（协程局部）
  */

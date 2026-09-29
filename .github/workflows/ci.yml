@@ -129,7 +129,7 @@ jobs:
   # 用 PHP 8.2：六个框架的当前版本都要求 >= 8.1；内核自身的 8.0 兼容性由上面的矩阵 job 覆盖。
   #
   # 注意：各 harness 会清自己的 aetherupload:* 键，因此**各自用专属 redis 库**
-  # （webman 7 / laravel 4 / thinkphp 5 / slim 6 / symfony 8 / yii 9 / native 10）；
+  # （webman 7 / laravel 4 / thinkphp 5 / slim 6 / symfony 8 / yii 9 / native 10 / yii3 11）；
   # 并行跑时共库会让第 8 条秒传偶发失败。
   integration-laravel:
     name: PHP 8.2 - Laravel 端到端
@@ -272,6 +272,45 @@ jobs:
         run: composer update --no-interaction --prefer-dist
       - name: Run Yii end-to-end suite
         run: bash tests/Integration/yii/ci.sh
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
+  # Yii3（yiisoft/* 那一代）与上面的 Yii2 是两套东西：PSR-7/PSR-15/PSR-11 + yiisoft/config 配置组。
+  # 骨架由 composer 真装（yiisoft/config 是 composer 插件，负责生成配置合并计划），
+  # 断言走真 HttpApplicationRunner，另有 php -S + curl 的真 HTTP 冒烟。
+  # 不需要 phpredis：这份 harness 用的是 predis（纯 PHP）。
+  integration-yii3:
+    name: PHP 8.2 - Yii3 端到端
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      # runner 上下文在 **job 级** env 里不合法（GitHub 会直接判成 workflow file issue，
+      # 整个 workflow 一个 job 都不启动），只能在 step 里经 $RUNNER_TEMP 写进 GITHUB_ENV。
+      - name: Point TMPDIR at the runner temp dir
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-php8.2-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php8.2-
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist
+      - name: Run Yii3 end-to-end suite
+        run: bash tests/Integration/yii3/ci.sh
       - name: Run test suite
         run: vendor/bin/phpunit --no-coverage
 

@@ -72,7 +72,7 @@ final class App
         return (int)(getenv('AETHERA_E2E_REDIS_PORT') ?: 6379);
     }
 
-    /** 专属 redis 库：七个 harness 各用一个，避免并行时互相清掉对方的秒传记录 */
+    /** 专属 redis 库：九个 harness 各用一个，避免并行时互相清掉对方的秒传记录 */
     public static function redisDb(): int
     {
         return (int)(getenv('AETHERA_E2E_REDIS_DB') ?: 10);

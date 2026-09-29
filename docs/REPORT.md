@@ -40,13 +40,13 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 ## 代码覆盖率
 
 `phpunit.xml.dist` 的 `<source>` 覆盖整个 `src/`，但单元套件**只加载 webman 一个适配器**
-（`composer.json` 不 require 任何框架），其余七个适配器在单测里必然是 0 —— 把它们混进一个数字
+（`composer.json` 不 require 任何框架），其余八个适配器在单测里必然是 0 —— 把它们混进一个数字
 没有意义，因此按两栏看：
 
 | 范围 | 行覆盖率（PHP 8.3 + PHPUnit 10.5 + pcov） |
 |---|---|
 | **单测可及**：`src/` 根目录 15 个文件 + `Contract/` + `Kernel/` + `Console/` + `Adapter/Webman/` | **81.68% (700/857)** |
-| 七个非 webman 适配器：`Adapter/{Native,Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii}/` | 0%（单测不加载）→ 由各自端到端套件覆盖，见下文 |
+| 八个非 webman 适配器：`Adapter/{Native,Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii,Yii3}/` | 0%（单测不加载）→ 由各自端到端套件覆盖，见下文 |
 
 | 模块 | 行 | 模块 | 行 |
 |---|---|---|---|
@@ -79,10 +79,14 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 2. **`Kernel/NullRedis`（0/12）、`NullEventDispatcher`（0/1）**：不装 Redis 的宿主用的空实现，
    单测里 webman 适配器绑的是真实的 `support\Redis` 桩。要覆盖得专门给「无 Redis 宿主」造一组用例。
 3. **`Kernel/AbstractAdapter`（2/5）**：默认实现被各适配器覆写，基类自身只走到少数行。
+3b. **`Kernel/Psr7{Response,Request,UploadedFile}` 与 `Kernel/Psr14Events`（第九个适配器一轮新增）**：
+   它们是 Slim 与 Yii3 共用的 PSR-7 / PSR-14 胶水。根 `composer.json` 不 require `psr/http-message`
+   （不该为一个内核侧共享件把框架侧依赖引进来），单测加载不到它们 —— 由两条端到端套件真跑覆盖
+   （Slim 18 用例 + Yii3 7 用例）。
 4. **`helpers.php`（2/4）**：`function_exists` 守卫的假分支不可达。
 5. **`RedisSavedPath::exists/set` 的异常分支**、**`PartialResource` 的 IO 失败路径**、
    **`ConfigMapper::set` 的未知属性守卫**：真实文件系统 / predis 契约下不可达，属防御性代码。
-6. **七个非 webman 适配器（1410 行）**：单测里 0%，因为它们的框架依赖根本不在 `require` 里。
+6. **八个非 webman 适配器**：单测里 0%，因为它们的框架依赖根本不在 `require` 里。
 7. **`Console/Application`（0/40）与 `Console/RunnerCommand`（0/13）**：Symfony Console 的命令壳。
    单测里刻意不加载它们（命令类方法签名不兼容是**加载期 fatal**，会掀掉整个 PHPUnit 进程，见 `docs/HARNESS.md`），
    改由各适配器的端到端套件真跑 —— 原生 PHP 与 Slim 的 `ci.sh` 都会执行 `list` / `groups` / `publish` / `clean` / `build` 五条命令。
@@ -101,8 +105,9 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 | Slim | `bash tests/Integration/slim/ci.sh` | 4 + 14 |
 | Hyperf | `bash tests/Integration/hyperf/ci.sh`（需 ext-swoole） | 4 + 3 |
 | Yii2 | `bash tests/Integration/yii/ci.sh` | 4 + 4 |
+| Yii3 | `bash tests/Integration/yii3/ci.sh`（真装 yiisoft/* 骨架 + 真 HttpApplicationRunner；另有 `php -S` + curl 冒烟） | 4 + 3 |
 
-「4 条共享流程」来自 `tests/Integration/FlowAssertions.php`，八个宿主跑的是**同一份断言**：
+「4 条共享流程」来自 `tests/Integration/FlowAssertions.php`，九个宿主跑的是**同一份断言**：
 
 1. `preprocess → 3 个分块 → 完成` 全链路，含 `.part` / `_header` 的中间态检查与最终 `savedPath` 格式
 2. 错误路径：错误 hash、`resource_name[]=1` 这类类型越界输入不返回 500
@@ -111,11 +116,11 @@ CI 的 `phpunit` job 跑 8.0 / 8.1 / 8.2 / 8.3 / 8.4 五版矩阵，外加 `php 
 
 外加 `display` / `download` 的**逐字节相等**与 `X-Content-Type-Options`、`Content-Disposition` 校验。
 
-各适配器 harness 用**各自专属的 redis 库**（webman 7 · laravel 4 · thinkphp 5 · hyperf 3 · slim 6 · symfony 8 · yii 9 · native 10）：
+各适配器 harness 用**各自专属的 redis 库**（webman 7 · laravel 4 · thinkphp 5 · hyperf 3 · slim 6 · symfony 8 · yii 9 · native 10 · yii3 11）：
 它们会清理自己的 `aetherupload:*` 键，共库时并行跑会让秒传用例偶发失败。
 
 > 端到端套件不进单测计数：主 `phpunit.xml.dist` 已 `<exclude>tests/Integration</exclude>`，
-> CI 里每个适配器一条独立 job（PHP 8.2；六个框架的当前版本都要求 ≥ 8.1，原生 PHP 那条不需要装任何框架）。
+> CI 里每个适配器一条独立 job（PHP 8.2；各框架的当前版本都要求 ≥ 8.1，Yii3 的应用模板要求 8.2+，原生 PHP 那条不需要装任何框架）。
 
 ---
 
@@ -162,3 +167,29 @@ docker run ... php vendor/bin/phpunit \
 - `docs/report/junit.xml` — JUnit XML（CI 集成用，**.gitignore 已忽略**）
 - `docs/report/coverage/` — HTML 覆盖率报告（浏览器打开 index.html，同样忽略）
 - `docs/REPORT.md` — 本摘要（入库）
+
+---
+
+# 六、第九个适配器（Yii3）一轮的产物与证据
+
+Yii3（yiisoft/* 那一代）与仓库里的 Yii2 适配器没有共用代码：PSR-7 / PSR-15 / PSR-11 容器 +
+`yiisoft/config` 配置组，没有全局函数、也没有 `Yii::$app`。本轮新增：
+
+- `src/Adapter/Yii3/`：`Yii3Adapter`（显式配置 + 每请求 PSR-7 请求即上下文身份）、`Bootstrap`
+  （`bind()` / `routes()` / `consoleCommands()`）、`AetherUploadController`（四条路由动作，
+  内核产物在此**唯一一次**落成真 PSR-7）、四个端口子类与四个控制台命令壳。
+- 内核侧复用：`Kernel/Psr7Response`、`Kernel/Psr7Request`、`Kernel/Psr7UploadedFile`、`Kernel/Event` +
+  `Kernel/Psr14Events`（Slim 侧保留同名子类，行为一字未改）。
+- `tests/Integration/yii3/`（真装骨架 + 真 runner + 真 redis + `php -S` 冒烟）、CI 新增 `integration-yii3` job。
+
+证据（本机 PHP 8.5.6 / PHPUnit 10.5.64）：
+
+| 验证 | 命令 | 结果 |
+|---|---|---|
+| 内核搬迁回归闸门 | `vendor/bin/phpunit -c tests/Integration/slim/phpunit.xml` | 搬迁前 `OK (18 tests, 95 assertions)`，搬迁后**同一条命令同样的数字** |
+| 单元套件 | `vendor/bin/phpunit --no-coverage` | `238 tests, 666 assertions`（与搬迁前一致；3 条 deprecation 是 PHP 8.5 对测试里 `ReflectionProperty::setAccessible()` 的提示，非本轮引入） |
+| Yii3 端到端 | `bash tests/Integration/yii3/ci.sh` | `OK (7 tests, 67 assertions)`；404 / 405 + `Allow` / 宿主自有路由 / 四条控制台命令 / 真 HTTP 冒烟均实测 |
+| 无 redis 时的诚实降级 | `AETHERA_E2E_REDIS=0 bash tests/Integration/yii3/ci.sh` | 秒传那条 `Skipped`，`aetherupload/build` 断言走反向分支（必须报错而不是假装成功） |
+
+新增的「上传对象不产生拷贝」断言是**反例验证过**的：把 `Kernel/Psr7UploadedFile::getRealPath()` 的
+「本地 uri 原样使用」分支短路掉，探针记录的副本数立刻从 0 变成 1，用例转红；恢复后转绿。

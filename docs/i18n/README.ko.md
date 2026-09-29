@@ -12,7 +12,7 @@
 
 **그 형태**
 
-composer 패키지 하나이며, **커널이 호스트 프레임워크와 분리**되어 있습니다. 같은 코드가 webman, 네이티브 PHP(프레임워크 없음), Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2에서 동작합니다([지원하는 프레임워크](#지원하는-프레임워크) 참고). 호스트의 설정, 라우트, 콘솔 명령, 언어 파일, 프런트엔드 스크립트는 설치 / 배포 명령으로 배포됩니다. 데이터베이스에 의존하지 않으며, Redis는 초고속 업로드를 켤 때만 필요하므로 선택적 의존성입니다.
+composer 패키지 하나이며, **커널이 호스트 프레임워크와 분리**되어 있습니다. 같은 코드가 webman, 네이티브 PHP(프레임워크 없음), Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2, Yii3에서 동작합니다([지원하는 프레임워크](#지원하는-프레임워크) 참고). 호스트의 설정, 라우트, 콘솔 명령, 언어 파일, 프런트엔드 스크립트는 설치 / 배포 명령으로 배포됩니다. 데이터베이스에 의존하지 않으며, Redis는 초고속 업로드를 켤 때만 필요하므로 선택적 의존성입니다.
 
 ![예제 페이지](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -25,8 +25,8 @@ aetherupload-webman/
 │   ├── RequestContext.php          요청 / 코루틴별 가변 상태(그룹 설정 스냅샷, 로드된 언어), 상주 프로세스에서 동시 요청이 그룹을 뒤섞지 않습니다
 │   ├── Contract/                   인터페이스 11개(설정 / 번역 / 요청 / 업로드 파일 / 응답 / Redis / 이벤트 / 경로 / 파일시스템 / 컨텍스트 / 어댑터)
 │   ├── Kernel/                     커널 측 기본 구현: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
-│   ├── Console/                    콘솔 명령 세 개의 비즈니스 로직(Runner) + 콘솔 관례가 없는 호스트의 진입점, 일곱 가지 명령 셸이 같은 구현을 공유합니다
-│   ├── Adapter/                    어댑터 여덟 개: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Console/                    콘솔 명령 세 개의 비즈니스 로직(Runner) + 콘솔 관례가 없는 호스트의 진입점, 아홉 가지 명령 셸이 같은 구현을 공유합니다
+│   ├── Adapter/                    어댑터 아홉 개: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
 │   ├── UploadController.php        업로드 진입점: preprocess(전처리 / 초고속 판정)와 saveChunk(청크 쓰기)
 │   ├── ResourceController.php      표시와 다운로드 진입점: display / download, nginx 직송 지원
 │   ├── PartialResource.php         청크 파일 본체: 경로 조립, 청크 단위 추가, 이름 변경, 크기와 타입 검증
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N   mtime 기준으로 만료된 임시 파일 정리
 ├── config/
 │   ├── app.php                   webman 플러그인 설정: 그룹, 라우트, 미들웨어와 각종 스위치
-│   ├── aetherupload.php          프레임워크에 독립적인 동일한 설정, 나머지 일곱 어댑터의 기준선(두 경로는 ConfigParityTest가 일치를 강제합니다)
+│   ├── aetherupload.php          프레임워크에 독립적인 동일한 설정, 나머지 여덟 어댑터의 기준선(두 경로는 ConfigParityTest가 일치를 강제합니다)
 │   └── route.php                 라우트 네 개 + 각각의 미들웨어 장착 지점
 ├── docs/                         문서, 이미지, 프런트엔드 스크립트
 │   ├── aetherupload-architecture.svg  설계 아키텍처 다이어그램
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       예제 페이지 소스, 연동할 때 그대로 참고할 수 있습니다
 ├── tests/
 │   ├── *.php                     PHPUnit 단위 케이스(호스트는 대역을 사용, PHP 8.0–8.4, PHPUnit 9.6과 10.5 두 버전)
-│   └── Integration/<fw>/         엔드투엔드 스위트, 프레임워크마다 한 벌: 프레임워크를 실제로 설치하고 업로드 경로를 실제로 실행합니다(webman은 phpunit.xml로 실제 서비스를 띄우고, 나머지 일곱은 각자의 ci.sh)
+│   └── Integration/<fw>/         엔드투엔드 스위트, 프레임워크마다 한 벌: 프레임워크를 실제로 설치하고 업로드 경로를 실제로 실행합니다(webman은 phpunit.xml로 실제 서비스를 띄우고, 나머지 여덟은 각자의 ci.sh)
 ├── uploads/                      레거시 디렉터리, 플러그인 실행 시에는 사용하지 않습니다
 └── composer.json
 ```
@@ -137,6 +137,7 @@ aetherupload-webman/
 | Slim | `Bootstrap::create()` 한 줄 | `tests/Integration/slim/` |
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | 애플리케이션 `bootstrap`에 Bootstrap 등록 | `tests/Integration/yii/` |
+| Yii3 | 진입 스크립트 한 줄 `Bootstrap::bind()` + 라우트 파일에서 `Bootstrap::routes()` 펼치기 | `tests/Integration/yii3/` |
 
 > 패키지 이름에 `webman`이 들어간 것은 역사적인 이유입니다(이 플러그인이 처음에는 webman만 지원했습니다). 나머지 호스트에서 사용하는 데에는 영향을 주지 않습니다.
 
@@ -148,7 +149,7 @@ aetherupload-webman/
    **만들지 않으면 반드시 실패합니다**: 커널의 `createGroupSubDir()`는 재귀가 아닌 `mkdir`이라 부모 디렉터리가 없으면 바로 false를 반환하는데, 그 오류가 포괄적인 `upload_error`로 번역되어 버려서 문제를 추적할 때 디렉터리 문제라는 것을 알아내기 어렵습니다.
 2. **파일 배포**: `aetherupload:publish`(Laravel은 `vendor:publish --tag=aetherupload-*`) —— 언어 파일과 프런트엔드 `js`를 호스트가 접근할 수 있는 위치에 넣습니다.
 
-> 명령 이름의 구분자는 각 프레임워크의 콘솔 관례를 따릅니다. webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / 네이티브 PHP는 `:`를 쓰고, **Yii는 `/`**를 씁니다(`php yii aetherupload/groups`). 아래 각 프레임워크의 예시는 그대로 복사해서 실행할 수 있는 형태입니다.
+> 명령 이름의 구분자는 각 프레임워크의 콘솔 관례를 따릅니다. webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / 네이티브 PHP는 `:`를 쓰고, **Yii2와 Yii3는 `/`**를 씁니다(`php yii aetherupload/groups`). 아래 각 프레임워크의 예시는 그대로 복사해서 실행할 수 있는 형태입니다.
 
 ## 각 프레임워크 연동
 
@@ -289,6 +290,47 @@ php yii aetherupload/publish
 ```
 > 배포 위치는 **문서 루트** 아래의 `vendor/aetherupload/js`입니다(webman의 문서 루트는 `public/`, Yii는 `web/`). 예제 페이지가 참조하는 절대 경로 `/vendor/aetherupload/js/…`의 의미가 "문서 루트"이므로, `YiiPaths::assetPath()`는 호스트의 `@webroot` 별칭을 우선 사용하고, 얻지 못하면 `<app>/web`으로 물러납니다.
 
+**Yii3**
+
+Yii3(yiisoft/* 세대)와 Yii2는 서로 다른 물건입니다. PSR-7 / PSR-15 / PSR-11 컨테이너 + `yiisoft/config` 설정 그룹을 쓰고, 전역 함수도 `Yii::$app`도 없습니다. 연동하려면 파일 세 개를 고쳐야 합니다:
+
+```php
+// 1) public/index.php —— 바인딩은 runner보다 먼저 해야 합니다(runner가 컨테이너를 만들고 bootstrap을 실행합니다)
+require __DIR__ . '/../vendor/autoload.php';
+
+\AetherUpload\Adapter\Yii3\Bootstrap::bind(
+    require __DIR__ . '/../config/aetherupload.php',   // aetherupload/publish가 생성
+    $root = dirname(__DIR__),
+    ['redis' => static fn () => new \Predis\Client(['database' => 0])]   // 초고속 업로드에 필요, 선택 사항
+);
+
+(new \Yiisoft\Yii\Runner\Http\HttpApplicationRunner($root))->run();
+```
+
+```php
+// 2) config/common/routes.php —— 비즈니스 라우트 네 개(설정은 명시적으로 전달, 아래 참고)
+return [
+    // …호스트 자체 라우트…
+    ...\AetherUpload\Adapter\Yii3\Bootstrap::routes(require __DIR__ . '/aetherupload.php'),
+];
+```
+
+```php
+// 3) config/common/params.php —— 콘솔 명령
+'yiisoft/yii-console' => ['commands' => \AetherUpload\Adapter\Yii3\Bootstrap::consoleCommands()],
+```
+
+```bash
+php yii aetherupload/groups     # 주의: Yii3의 콘솔 구분자도 "/"입니다
+php yii aetherupload/publish
+```
+
+> **미들웨어 스택을 바꿀 필요가 없습니다**: 라우트 네 개의 action이 `ServerRequestInterface`를 바로 받고(yiisoft/middleware-dispatcher가 타입으로 주입), 어댑터가 action 안에서 현재 요청을 등록하고 정리합니다.
+> `Bootstrap::routes()`의 설정은 **명시적 인자**입니다. 라우트 파일은 컨테이너 구축 시점에 `require`되는데, 그 순간에는 `Runtime`이 아직 바인딩되지 않아 `Runtime::config()`를 읽으면 반드시 "호스트 어댑터가 아직 바인딩되지 않았습니다"를 던집니다.
+> 콘솔 진입점(`yii`)도 마찬가지로 먼저 `Bootstrap::bind()`를 호출합니다. 명령 목록은 `yiisoft/yii-console`의 params에 넘깁니다.
+> 배포 위치: `resource/translations/aetherupload`(언어 파일)와 `public/vendor/aetherupload/js`(프런트엔드 리소스) —— Yii3 애플리케이션 템플릿의 문서 루트가 바로 `public/`입니다.
+> 설정의 `middleware_*`는 Yii3에서 yiisoft/router가 알아보는 형태(PSR-15 미들웨어 클래스 이름, 인스턴스, 또는 `function ($request, $handler)` 호출 가능 객체)이며, 해당 라우트에 장착됩니다.
+
 **webman**
 
 ```bash
@@ -299,7 +341,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > 참고: 관련 설정 옵션을 바꾸려면 `config/plugin/erikwang2013/aetherupload-webman/app.php`를 편집하십시오.
 
-> 나머지 일곱 호스트는 먼저 어댑터를 등록한 뒤 "공통 두 단계"를 실행해야 합니다. **webman도 같은 명령을 제공합니다**(`php webman aetherupload:groups` / `aetherupload:publish`). 다만 설치할 때 이미 자동으로 한 번 돌았습니다.
+> 나머지 여덟 호스트는 먼저 어댑터를 등록한 뒤 "공통 두 단계"를 실행해야 합니다. **webman도 같은 명령을 제공합니다**(`php webman aetherupload:groups` / `aetherupload:publish`). 다만 설치할 때 이미 자동으로 한 번 돌았습니다.
 
 # 사용  
 **파일 업로드**  

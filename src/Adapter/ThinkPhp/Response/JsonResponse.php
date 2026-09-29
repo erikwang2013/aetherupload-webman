@@ -15,7 +15,7 @@ class JsonResponse extends Response
 {
     use WithHeader;
 
-    /** 六个适配器共用的编码 flag，改这里等于改全部 */
+    /** 九个适配器共用的编码 flag，改这里等于改全部 */
     const ENCODE_FLAGS = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR;
 
     protected $contentType = 'application/json';

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * 框架无关的插件配置（Laravel / ThinkPHP / Hyperf / Yii / Slim / Symfony 适配器读取它）。
+ * 框架无关的插件配置（Laravel / ThinkPHP / Hyperf / Yii / Yii3 / Slim / Symfony / 原生 PHP 适配器读取它）。
  *
  * 键名是内核的「逻辑键」——与 config/app.php（webman 版）完全一致，
  * 区别只在于没有 webman 的 plugin.erikwang2013.aetherupload-webman.app. 前缀。
@@ -13,7 +13,9 @@
  *   Hyperf   config/autoload/aetherupload.php
  *   ThinkPHP aetherupload.（Config facade）
  *   Yii      params['aetherupload']
+ *   Yii3     构造适配器时显式传入（Bootstrap::bind 的第一个参数，Yii3 没有全局配置函数）
  *   Slim     构造适配器时显式传入
+ *   原生 PHP 构造适配器时显式传入
  */
 
 return [

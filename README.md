@@ -12,7 +12,7 @@
 
 **它的形状**
 
-一个 composer 包，**内核与宿主框架解耦**：同一份代码在 webman、原生 PHP（无框架）、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2 下可用（见 [支持的框架](#支持的框架)）。宿主的配置、路由、控制台命令、语言文件与前端脚本由安装 / 发布命令分发；不依赖数据库；Redis 只在开启秒传时才需要，属可选依赖。
+一个 composer 包，**内核与宿主框架解耦**：同一份代码在 webman、原生 PHP（无框架）、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2、Yii3 下可用（见 [支持的框架](#支持的框架)）。宿主的配置、路由、控制台命令、语言文件与前端脚本由安装 / 发布命令分发；不依赖数据库；Redis 只在开启秒传时才需要，属可选依赖。
 
 ![示例页面](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -25,8 +25,8 @@ aetherupload-webman/
 │   ├── RequestContext.php          每请求 / 每协程的可变状态（分组配置快照、已加载语种），常驻进程下并发请求不串组
 │   ├── Contract/                   11 个接口（配置 / 翻译 / 请求 / 上传文件 / 响应 / Redis / 事件 / 路径 / 文件系统 / 上下文 / 适配器）
 │   ├── Kernel/                     内核侧默认实现：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、PhpFileTranslator、ClientRedis…
-│   ├── Console/                    三个命令的业务逻辑（Runner）+ 无控制台约定宿主的现成入口，七种命令壳共用同一份
-│   ├── Adapter/                    八个适配器：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Console/                    三个命令的业务逻辑（Runner）+ 无控制台约定宿主的现成入口，九种命令壳共用同一份
+│   ├── Adapter/                    九个适配器：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
 │   ├── UploadController.php        上传入口：preprocess（预处理 / 秒传判定）与 saveChunk（分块写入）
 │   ├── ResourceController.php      展示与下载入口：display / download，支持交给 nginx 直发
 │   ├── PartialResource.php         分块文件本体：路径拼装、逐块追加、重命名、大小与类型校验
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  按 mtime 清理过期临时文件
 ├── config/
 │   ├── app.php                   webman 插件配置：分组、路由、中间件与各类开关
-│   ├── aetherupload.php          框架无关的同一份配置，供其余七个适配器作基线（两条路径由 ConfigParityTest 锁死一致）
+│   ├── aetherupload.php          框架无关的同一份配置，供其余八个适配器作基线（两条路径由 ConfigParityTest 锁死一致）
 │   └── route.php                 四条路由 + 各自的中间件挂载点
 ├── docs/                         文档、图片与前端脚本
 │   ├── aetherupload-architecture.svg  设计架构图
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       示例页源码，接入时可直接参考
 ├── tests/
 │   ├── *.php                     PHPUnit 单元用例（宿主用替身，PHP 8.0–8.4，PHPUnit 9.6 与 10.5 双版本）
-│   └── Integration/<fw>/         端到端套件，每个框架一套：真装框架、真跑上传链路（webman 走 phpunit.xml 起真服务，其余七个走各自的 ci.sh）
+│   └── Integration/<fw>/         端到端套件，每个框架一套：真装框架、真跑上传链路（webman 走 phpunit.xml 起真服务，其余八个走各自的 ci.sh）
 ├── uploads/                      遗留目录，插件运行时不使用
 └── composer.json
 ```
@@ -137,6 +137,7 @@ aetherupload-webman/
 | Slim | 一行 `Bootstrap::create()` | `tests/Integration/slim/` |
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | 应用 `bootstrap` 里挂 Bootstrap | `tests/Integration/yii/` |
+| Yii3 | 入口脚本一行 `Bootstrap::bind()` + 路由文件展开 `Bootstrap::routes()` | `tests/Integration/yii3/` |
 
 > 包名里的 `webman` 是历史原因（本插件最初只支持 webman），不影响在其余宿主下使用。
 
@@ -148,7 +149,7 @@ aetherupload-webman/
    **不建就一定失败**：内核的 `createGroupSubDir()` 是非递归 `mkdir`，父目录缺失时直接返回 false，而错误会被统一翻译成笼统的 `upload_error`，排查时很难看出是目录问题。
 2. **发布文件**：`aetherupload:publish`（Laravel 用 `vendor:publish --tag=aetherupload-*`）—— 把语言文件与前端 `js` 放进宿主可访问的位置。
 
-> 命令名的分隔符跟着各框架的控制台约定：webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / 原生 PHP 用 `:`，**Yii 用 `/`**（`php yii aetherupload/groups`）。下面每家的示例都是可直接复制运行的写法。
+> 命令名的分隔符跟着各框架的控制台约定：webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / 原生 PHP 用 `:`，**Yii2 与 Yii3 用 `/`**（`php yii aetherupload/groups`）。下面每家的示例都是可直接复制运行的写法。
 
 ## 各框架接入
 
@@ -289,6 +290,47 @@ php yii aetherupload/publish
 ```
 > 发布落点是**文档根**下的 `vendor/aetherupload/js`（webman 的文档根是 `public/`，Yii 的是 `web/`）：示例页引用的是绝对路径 `/vendor/aetherupload/js/…`，语义是"文档根"，所以 `YiiPaths::assetPath()` 优先取宿主的 `@webroot` 别名，取不到时退回 `<app>/web`。
 
+**Yii3**
+
+Yii3（yiisoft/* 那一代）与 Yii2 是两套东西：PSR-7 / PSR-15 / PSR-11 容器 + `yiisoft/config` 配置组，没有全局函数、也没有 `Yii::$app`。接入要动三个文件：
+
+```php
+// 1) public/index.php —— 绑定必须早于 runner（runner 会构建容器、跑 bootstrap）
+require __DIR__ . '/../vendor/autoload.php';
+
+\AetherUpload\Adapter\Yii3\Bootstrap::bind(
+    require __DIR__ . '/../config/aetherupload.php',   // 由 aetherupload/publish 生成
+    $root = dirname(__DIR__),
+    ['redis' => static fn () => new \Predis\Client(['database' => 0])]   // 秒传需要，可选
+);
+
+(new \Yiisoft\Yii\Runner\Http\HttpApplicationRunner($root))->run();
+```
+
+```php
+// 2) config/common/routes.php —— 四条业务路由（配置显式传入，见下）
+return [
+    // …宿主自己的路由…
+    ...\AetherUpload\Adapter\Yii3\Bootstrap::routes(require __DIR__ . '/aetherupload.php'),
+];
+```
+
+```php
+// 3) config/common/params.php —— 控制台命令
+'yiisoft/yii-console' => ['commands' => \AetherUpload\Adapter\Yii3\Bootstrap::consoleCommands()],
+```
+
+```bash
+php yii aetherupload/groups     # 同样注意：Yii3 的控制台分隔符也是 "/"
+php yii aetherupload/publish
+```
+
+> **不需要改中间件栈**：四条路由的 action 直接收 `ServerRequestInterface`（yiisoft/middleware-dispatcher 按类型注入），适配器在 action 内登记与清理当前请求。
+> `Bootstrap::routes()` 的配置是**显式入参**：路由文件在容器构建期就被 `require`，那一刻 `Runtime` 还没绑定，读 `Runtime::config()` 必然抛「尚未绑定宿主适配器」。
+> 控制台入口（`yii`）同样先 `Bootstrap::bind()`；命令表交给 `yiisoft/yii-console` 的 params。
+> 发布落点：`resource/translations/aetherupload`（语言文件）与 `public/vendor/aetherupload/js`（前端资源）—— Yii3 应用模板的文档根就是 `public/`。
+> 配置里的 `middleware_*` 在 Yii3 下是 yiisoft/router 认识的形态（PSR-15 中间件类名、实例，或 `function ($request, $handler)` 可调用对象），挂到对应路由上。
+
 **webman**
 
 ```bash
@@ -299,7 +341,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > 提示：更改相关配置选项请编辑 `config/plugin/erikwang2013/aetherupload-webman/app.php`。
 
-> 其余七个宿主必须先注册适配器，再跑「通用两步」。**webman 也提供同样的命令**（`php webman aetherupload:groups` / `aetherupload:publish`），只是安装时已自动跑过一遍。
+> 其余八个宿主必须先注册适配器，再跑「通用两步」。**webman 也提供同样的命令**（`php webman aetherupload:groups` / `aetherupload:publish`），只是安装时已自动跑过一遍。
 
 # 使用  
 **文件上传**  

@@ -19,7 +19,7 @@ use Symfony\Component\Config\Definition\Processor;
  */
 class SymfonyConfigParityTest extends TestCase
 {
-    /** 规格文件（六个框架共用的逻辑键） */
+    /** 规格文件（九个框架共用的逻辑键） */
     private function canonicalConfig(): array
     {
         return require \dirname(__DIR__, 3) . '/config/aetherupload.php';

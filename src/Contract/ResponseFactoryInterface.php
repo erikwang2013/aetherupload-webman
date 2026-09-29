@@ -17,7 +17,7 @@ interface ResponseFactoryInterface
     /**
      * JSON 响应。
      *
-     * 六个适配器必须使用同一组 flag：
+     * 九个适配器必须使用同一组 flag：
      * JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR，
      * 否则同一份错误消息在不同框架下字节不同。
      *

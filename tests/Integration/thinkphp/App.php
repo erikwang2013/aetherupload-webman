@@ -54,7 +54,7 @@ final class App
 
     public static function redisDb(): int
     {
-        // 六个框架的集成测试会并行跑，各自的 flush 不能落在同一个库上（否则会出现
+        // 九个框架的集成测试会并行跑，各自的 flush 不能落在同一个库上（否则会出现
         // 「别人的 flush 正好插在你第 8 条两次上传之间，秒传命中不了」这种随机假红）。
         // 分配：webman 7 · laravel 4 · thinkphp 5 · hyperf 3 · slim 6 · symfony 8 · yii 9
         return (int)(getenv('AETHERA_E2E_REDIS_DB') ?: 5);

@@ -10,7 +10,7 @@ namespace AetherUpload\Contract;
  */
 interface AdapterInterface
 {
-    /** 适配器名，用于诊断输出（webman / laravel / hyperf / thinkphp / yii / slim / symfony） */
+    /** 适配器名，用于诊断输出（webman / native / laravel / hyperf / thinkphp / yii / yii3 / slim / symfony） */
     public function name(): string;
 
     public function config(): ConfigInterface;

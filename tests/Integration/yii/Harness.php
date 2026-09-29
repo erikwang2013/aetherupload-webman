@@ -58,7 +58,7 @@ final class Harness
      * yii2-redis 的连接参数（它的 Connection 用裸 socket，不需要 phpredis/predis 扩展）。
      *
      * 超时必须设：本机没起 redis 时没有超时就是长时间挂住，而第 8 条本来就允许跳过。
-     * db 选 9：六个框架的端到端会并行跑，各自 flush 'aetherupload*' 会互相破坏
+     * db 选 9：九个框架的端到端会并行跑，各自 flush 'aetherupload*' 会互相破坏
      * （典型症状是别人的 flush 正好落在本框架第 8 条两次上传之间，秒传命中不了，随机假红）。
      * 分配：webman 7 · laravel 4 · thinkphp 5 · hyperf 3 · slim 6 · symfony 8 · yii 9。
      */

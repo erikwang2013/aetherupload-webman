@@ -1,6 +1,6 @@
 # aetherupload-webman
 
-> 大文件分块上传插件：断线续传 / 秒传 / 完整性校验，框架无关内核 + 七个宿主适配器
+> 大文件分块上传插件：断线续传 / 秒传 / 完整性校验，框架无关内核 + 九个宿主适配器
 
 ## Project Overview
 
@@ -10,7 +10,7 @@ md5 命名 —— 于是上传、断线续传、秒传、去重、校验共用�
 
 **Tech Stack**: PHP 8.0–8.4（webman + Workerman 常驻进程模型为原生场景）· PHPUnit 9.6 / 10.5 · Redis（仅秒传，可选）
 **Architecture**: 端口-适配器（ports & adapters）。内核 `src/` 只经静态门面 `Runtime` 与 `src/Contract/` 的
-11 个接口访问宿主；八个适配器在 `src/Adapter/{Webman,Native,Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii}/`。
+11 个接口访问宿主；九个适配器在 `src/Adapter/{Webman,Native,Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii,Yii3}/`。
 可变状态一律进 `RequestContext`（每请求/每协程），适配器与 `Runtime` 只持有不可变绑定。
 
 ## Quick Start
@@ -24,7 +24,7 @@ composer install --no-interaction
 ```bash
 vendor/bin/phpunit --no-coverage                              # 单元套件（替身，不加载任何框架）
 vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml    # webman 端到端（起真服务 + curl）
-bash tests/Integration/laravel/ci.sh                          # 其余七个同构（native/laravel/thinkphp/symfony/slim/hyperf/yii）
+bash tests/Integration/laravel/ci.sh                          # 其余八个同构（native/laravel/thinkphp/symfony/slim/hyperf/yii/yii3）
 ```
 
 ### PHP 版本矩阵

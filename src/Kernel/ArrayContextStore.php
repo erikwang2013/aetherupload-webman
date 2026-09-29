@@ -6,7 +6,7 @@ use AetherUpload\Contract\ContextStoreInterface;
 
 /**
  * 进程级上下文存储 —— 适用于「每请求一个进程」的宿主（PHP-FPM 下的 Laravel/Symfony/
- * ThinkPHP/Yii/Slim），也适用于 CLI。Hyperf 必须换成协程局部的实现。
+ * ThinkPHP/Yii/Yii3/Slim），也适用于 CLI。Hyperf 必须换成协程局部的实现。
  */
 class ArrayContextStore implements ContextStoreInterface
 {

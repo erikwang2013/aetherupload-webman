@@ -9,7 +9,7 @@ use Yii;
 /**
  * 响应构造：三种形态都返回 YiiResponse（或宿主在 response 组件里配置的子类）。
  *
- * text/json 直接用内核给定的字节，不走 Yii 的 formatter —— 六个适配器的 JSON 必须字节一致，
+ * text/json 直接用内核给定的字节，不走 Yii 的 formatter —— 九个适配器的 JSON 必须字节一致，
  * 交给 JsonResponseFormatter 就会掺进宿主的 encodeOptions 差异。
  * format 置为 raw 是为了让 Response::prepare() 原样保留 content。
  */

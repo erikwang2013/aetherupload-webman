@@ -7,7 +7,7 @@ use AetherUpload\Runtime;
 /**
  * aetherupload:groups 的业务逻辑。
  *
- * 刻意不继承任何基类、不引用任何宿主命名空间：六个框架的命令壳都委托到这里，逻辑只有一份。
+ * 刻意不继承任何基类、不引用任何宿主命名空间：九个框架的命令壳都委托到这里，逻辑只有一份。
  */
 class ListGroupsRunner
 {

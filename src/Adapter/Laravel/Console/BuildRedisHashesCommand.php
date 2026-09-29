@@ -13,7 +13,7 @@ class BuildRedisHashesCommand extends Command
     protected $description = 'Rebuild the correlations between hashes and file storage paths in Redis';
 
     /**
-     * 只做输出通道转接：业务逻辑在 BuildRedisHashesRunner，六个框架的命令壳共用同一份。
+     * 只做输出通道转接：业务逻辑在 BuildRedisHashesRunner，九个框架的命令壳共用同一份。
      */
     public function handle(): int
     {

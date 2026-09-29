@@ -12,7 +12,7 @@ Wer große Dateien direkt aus dem Browser hochlädt, kommt an drei Hürden nicht
 
 **Wie es aufgebaut ist**
 
-Ein Composer-Paket mit **vom Host-Framework entkoppeltem Kern**: derselbe Code läuft unter webman, nativem PHP (ohne Framework), Laravel, ThinkPHP, Symfony, Slim, Hyperf und Yii2 (siehe [Unterstützte Frameworks](#unterstützte-frameworks)). Konfiguration, Routen, Konsolenbefehle, Sprachdateien und Frontend-Skripte des Hosts werden über Installations-/Publish-Befehle verteilt; eine Datenbank wird nicht benötigt; Redis ist nur für den Sofort-Upload erforderlich und damit eine optionale Abhängigkeit.
+Ein Composer-Paket mit **vom Host-Framework entkoppeltem Kern**: derselbe Code läuft unter webman, nativem PHP (ohne Framework), Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2 und Yii3 (siehe [Unterstützte Frameworks](#unterstützte-frameworks)). Konfiguration, Routen, Konsolenbefehle, Sprachdateien und Frontend-Skripte des Hosts werden über Installations-/Publish-Befehle verteilt; eine Datenbank wird nicht benötigt; Redis ist nur für den Sofort-Upload erforderlich und damit eine optionale Abhängigkeit.
 
 ![Beispielseite](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -25,8 +25,8 @@ aetherupload-webman/
 │   ├── RequestContext.php          Veränderlicher Zustand pro Request / pro Coroutine (Konfigurations-Snapshot je Gruppe, geladene Sprachen); bei Dauerprozessen vermischen sich nebenläufige Requests nicht über Gruppen hinweg
 │   ├── Contract/                   11 Interfaces (Konfiguration / Übersetzung / Request / Upload-Datei / Response / Redis / Event / Pfad / Dateisystem / Kontext / Adapter)
 │   ├── Kernel/                     Standardimplementierungen der Kernseite: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis …
-│   ├── Console/                    Geschäftslogik der drei Konsolenbefehle (Runner) + fertige Einstiegspunkte für Hosts ohne Konsolenkonvention; die sieben Befehlshüllen teilen sich dieselbe
-│   ├── Adapter/                    acht Adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Console/                    Geschäftslogik der drei Konsolenbefehle (Runner) + fertige Einstiegspunkte für Hosts ohne Konsolenkonvention; die neun Befehlshüllen teilen sich dieselbe
+│   ├── Adapter/                    neun Adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
 │   ├── UploadController.php        Upload-Einstieg: preprocess (Vorverarbeitung / Sofort-Upload-Prüfung) und saveChunk (Chunk-Schreiben)
 │   ├── ResourceController.php      Einstieg für Anzeige und Download: display / download, kann an nginx zur Direktauslieferung übergeben werden
 │   ├── PartialResource.php         die Chunk-Datei selbst: Pfadaufbau, Anhängen Chunk für Chunk, Umbenennen, Größen- und Typprüfung
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  abgelaufene temporäre Dateien nach mtime aufräumen
 ├── config/
 │   ├── app.php                   webman-Plugin-Konfiguration: Gruppen, Routen, Middleware und diverse Schalter
-│   ├── aetherupload.php          dieselbe Konfiguration framework-unabhängig, als Basis für die übrigen sieben Adapter (beide Pfade sind durch ConfigParityTest fest auf Gleichheit geprüft)
+│   ├── aetherupload.php          dieselbe Konfiguration framework-unabhängig, als Basis für die übrigen acht Adapter (beide Pfade sind durch ConfigParityTest fest auf Gleichheit geprüft)
 │   └── route.php                 vier Routen + ihre jeweiligen Middleware-Anhängepunkte
 ├── docs/                         Dokumentation, Bilder und Frontend-Skripte
 │   ├── aetherupload-architecture.svg  Architekturdiagramm
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       Quellcode der Beispielseite, kann bei der Integration direkt als Vorlage dienen
 ├── tests/
 │   ├── *.php                     PHPUnit-Unit-Tests (Host durch Attrappen ersetzt, PHP 8.0–8.4, PHPUnit in den Versionen 9.6 und 10.5)
-│   └── Integration/<fw>/         End-to-End-Suiten, eine pro Framework: echtes Framework installiert, echte Upload-Kette durchlaufen (webman startet über phpunit.xml einen echten Dienst, die übrigen sieben nutzen ihr jeweiliges ci.sh)
+│   └── Integration/<fw>/         End-to-End-Suiten, eine pro Framework: echtes Framework installiert, echte Upload-Kette durchlaufen (webman startet über phpunit.xml einen echten Dienst, die übrigen acht nutzen ihr jeweiliges ci.sh)
 ├── uploads/                      Altbestand, wird zur Laufzeit des Plugins nicht verwendet
 └── composer.json
 ```
@@ -137,6 +137,7 @@ Der Kern (Chunking, Fortsetzen, Sofort-Upload, Prüfung, Adressierung) ist vom H
 | Slim | eine Zeile `Bootstrap::create()` | `tests/Integration/slim/` |
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | Bootstrap im `bootstrap` der Anwendung einhängen | `tests/Integration/yii/` |
+| Yii3 | eine Zeile `Bootstrap::bind()` im Einstiegsskript + `Bootstrap::routes()` in der Routendatei entfalten | `tests/Integration/yii3/` |
 
 > Das `webman` im Paketnamen ist historisch bedingt (das Plugin unterstützte ursprünglich nur webman) und steht der Nutzung unter den übrigen Hosts nicht entgegen.
 
@@ -148,7 +149,7 @@ Unabhängig vom Host gibt es nach der Installation des Pakets zwei **Pflichtschr
    **Ohne diesen Schritt schlägt es zwangsläufig fehl**: `createGroupSubDir()` im Kern ist ein nicht-rekursives `mkdir` und gibt bei fehlendem Elternverzeichnis direkt false zurück; der Fehler wird einheitlich zum pauschalen `upload_error` übersetzt, sodass bei der Fehlersuche kaum erkennbar ist, dass es am Verzeichnis liegt.
 2. **Dateien veröffentlichen**: `aetherupload:publish` (unter Laravel `vendor:publish --tag=aetherupload-*`) – legt Sprachdateien und das Frontend-`js` an eine für den Host erreichbare Stelle.
 
-> Das Trennzeichen der Befehlsnamen folgt der Konsolenkonvention des jeweiligen Frameworks: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / natives PHP verwenden `:`, **Yii verwendet `/`** (`php yii aetherupload/groups`). Die Beispiele unten sind jeweils direkt kopierbar.
+> Das Trennzeichen der Befehlsnamen folgt der Konsolenkonvention des jeweiligen Frameworks: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / natives PHP verwenden `:`, **Yii2 und Yii3 verwenden `/`** (`php yii aetherupload/groups`). Die Beispiele unten sind jeweils direkt kopierbar.
 
 ## Integration je Framework
 
@@ -290,6 +291,47 @@ php yii aetherupload/publish
 ```
 > Das Veröffentlichungsziel ist `vendor/aetherupload/js` unter dem **Document Root** (bei webman ist das `public/`, bei Yii `web/`): die Beispielseite referenziert den absoluten Pfad `/vendor/aetherupload/js/…`, gemeint ist damit der „Document Root“, weshalb `YiiPaths::assetPath()` bevorzugt den `@webroot`-Alias des Hosts nimmt und andernfalls auf `<app>/web` zurückfällt.
 
+**Yii3**
+
+Yii3 (die Generation `yiisoft/*`) und Yii2 sind zwei verschiedene Dinge: PSR-7 / PSR-15 / PSR-11-Container + `yiisoft/config`-Konfigurationsgruppen, ohne globale Funktionen und ohne `Yii::$app`. Für die Integration sind drei Dateien anzupassen:
+
+```php
+// 1) public/index.php – die Bindung muss vor dem Runner erfolgen (der Runner baut den Container auf und führt den Bootstrap aus)
+require __DIR__ . '/../vendor/autoload.php';
+
+\AetherUpload\Adapter\Yii3\Bootstrap::bind(
+    require __DIR__ . '/../config/aetherupload.php',   // von aetherupload/publish erzeugt
+    $root = dirname(__DIR__),
+    ['redis' => static fn () => new \Predis\Client(['database' => 0])]   // für den Sofort-Upload nötig, optional
+);
+
+(new \Yiisoft\Yii\Runner\Http\HttpApplicationRunner($root))->run();
+```
+
+```php
+// 2) config/common/routes.php – die vier fachlichen Routen (Konfiguration explizit übergeben, siehe unten)
+return [
+    // …die eigenen Routen des Hosts…
+    ...\AetherUpload\Adapter\Yii3\Bootstrap::routes(require __DIR__ . '/aetherupload.php'),
+];
+```
+
+```php
+// 3) config/common/params.php – die Konsolenbefehle
+'yiisoft/yii-console' => ['commands' => \AetherUpload\Adapter\Yii3\Bootstrap::consoleCommands()],
+```
+
+```bash
+php yii aetherupload/groups     # ebenfalls zu beachten: auch das Konsolentrennzeichen von Yii3 ist "/"
+php yii aetherupload/publish
+```
+
+> **Der Middleware-Stack muss nicht geändert werden**: Die Actions der vier Routen erhalten direkt eine `ServerRequestInterface` (yiisoft/middleware-dispatcher injiziert nach Typ); der Adapter registriert und bereinigt den aktuellen Request innerhalb der Action.
+> Die Konfiguration von `Bootstrap::routes()` ist ein **expliziter Parameter**: Die Routendatei wird bereits während des Container-Aufbaus per `require` geladen; zu jenem Zeitpunkt ist `Runtime` noch nicht gebunden, ein Aufruf von `Runtime::config()` wirft zwangsläufig „Host-Adapter noch nicht gebunden“.
+> Der Konsoleneinstieg (`yii`) ruft ebenfalls zuerst `Bootstrap::bind()` auf; die Befehlstabelle geht an die params von `yiisoft/yii-console`.
+> Veröffentlichungsziel: `resource/translations/aetherupload` (Sprachdateien) und `public/vendor/aetherupload/js` (Frontend-Ressourcen) – das Document Root des Yii3-Anwendungstemplates ist `public/`.
+> Die `middleware_*` in der Konfiguration haben unter Yii3 die von yiisoft/router erwartete Form (PSR-15-Middleware-Klassenname, Instanz oder ein aufrufbares Objekt `function ($request, $handler)`) und werden an die jeweilige Route gehängt.
+
 **webman**
 
 ```bash
@@ -300,7 +342,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > Hinweis: Um die zugehörigen Konfigurationsoptionen zu ändern, bearbeiten Sie `config/plugin/erikwang2013/aetherupload-webman/app.php`.
 
-> Die übrigen sieben Hosts erfordern zuerst die Registrierung des Adapters und dann die „zwei generellen Schritte“. **webman bietet dieselben Befehle ebenfalls** (`php webman aetherupload:groups` / `aetherupload:publish`) – dort wurden sie bei der Installation nur bereits automatisch ausgeführt.
+> Die übrigen acht Hosts erfordern zuerst die Registrierung des Adapters und dann die „zwei generellen Schritte“. **webman bietet dieselben Befehle ebenfalls** (`php webman aetherupload:groups` / `aetherupload:publish`) – dort wurden sie bei der Installation nur bereits automatisch ausgeführt.
 
 # Verwendung  
 **Datei-Upload**  

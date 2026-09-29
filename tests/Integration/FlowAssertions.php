@@ -5,7 +5,7 @@ namespace AetherUpload\Tests\Integration;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 七个框架共享的端到端（真框架 + 真 HTTP）断言。
+ * 九个框架共享的端到端（真框架 + 真 HTTP）断言。
  *
  * 各框架只实现两件事：
  *   - send()         发一个真实请求，返回 ['status' => int, 'body' => string, 'headers' => string[]]

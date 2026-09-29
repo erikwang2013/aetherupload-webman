@@ -10,7 +10,7 @@ use AetherUpload\Util;
 /**
  * aetherupload:build 的业务逻辑。
  *
- * 刻意不继承任何基类、不引用任何宿主命名空间：六个框架的命令壳（Symfony / Illuminate\
+ * 刻意不继承任何基类、不引用任何宿主命名空间：九个框架的命令壳（Symfony / Illuminate\
  * Console / think\console / yii\console / Hyperf …）都委托到这里，逻辑只有一份。
  */
 class BuildRedisHashesRunner

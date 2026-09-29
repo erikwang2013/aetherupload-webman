@@ -12,7 +12,7 @@
 
 **全体像**
 
-composer パッケージが 1 つで、**カーネルはホストフレームワークから分離**されています。同じコードが webman、ネイティブ PHP（フレームワークなし）、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2 で動作します（[対応フレームワーク](#対応フレームワーク) を参照）。ホスト側の設定・ルート・コンソールコマンド・言語ファイル・フロントエンドスクリプトは、インストール / パブリッシュコマンドが配布します。データベースには依存しません。Redis は秒伝を有効にしたときだけ必要になる任意の依存です。
+composer パッケージが 1 つで、**カーネルはホストフレームワークから分離**されています。同じコードが webman、ネイティブ PHP（フレームワークなし）、Laravel、ThinkPHP、Symfony、Slim、Hyperf、Yii2、Yii3 で動作します（[対応フレームワーク](#対応フレームワーク) を参照）。ホスト側の設定・ルート・コンソールコマンド・言語ファイル・フロントエンドスクリプトは、インストール / パブリッシュコマンドが配布します。データベースには依存しません。Redis は秒伝を有効にしたときだけ必要になる任意の依存です。
 
 ![サンプルページ](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -25,8 +25,8 @@ aetherupload-webman/
 │   ├── RequestContext.php          リクエスト単位 / コルーチン単位の可変状態（グループ設定のスナップショット、読み込み済みの言語）。常駐プロセス下でも並行リクエスト同士でグループが混ざらない
 │   ├── Contract/                   11 個のインターフェース（設定 / 翻訳 / リクエスト / アップロードファイル / レスポンス / Redis / イベント / パス / ファイルシステム / コンテキスト / アダプタ）
 │   ├── Kernel/                     カーネル側のデフォルト実装：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、NullEventDispatcher、PhpFileTranslator、ClientRedis…
-│   ├── Console/                    3 つのコマンドの業務ロジック（Runner）+ コンソール規約を持たないホスト向けの既成エントリ。7 種類のコマンドシェルが同じ 1 つを共有する
-│   ├── Adapter/                    8 つのアダプタ：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Console/                    3 つのコマンドの業務ロジック（Runner）+ コンソール規約を持たないホスト向けの既成エントリ。9 種類のコマンドシェルが同じ 1 つを共有する
+│   ├── Adapter/                    9 つのアダプタ：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
 │   ├── UploadController.php        アップロードの入口：preprocess（前処理 / 秒伝判定）と saveChunk（分割書き込み）
 │   ├── ResourceController.php      表示とダウンロードの入口：display / download。nginx に直接送出させることもできる
 │   ├── PartialResource.php         分割ファイルの本体：パスの組み立て、ブロック単位の追記、リネーム、サイズと種別の検証
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N  mtime に基づいて期限切れの一時ファイルを削除する
 ├── config/
 │   ├── app.php                   webman プラグイン設定：グループ、ルート、ミドルウェアと各種スイッチ
-│   ├── aetherupload.php          フレームワーク非依存の同一の設定。残り 7 つのアダプタのベースラインになる（2 つのパスは ConfigParityTest が一致を固定する）
+│   ├── aetherupload.php          フレームワーク非依存の同一の設定。残り 8 つのアダプタのベースラインになる（2 つのパスは ConfigParityTest が一致を固定する）
 │   └── route.php                 4 本のルート + それぞれのミドルウェア適用点
 ├── docs/                         ドキュメント、画像、フロントエンドスクリプト
 │   ├── aetherupload-architecture.svg  設計アーキテクチャ図
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       サンプルページのソース。導入時にはこれをそのまま参考にできる
 ├── tests/
 │   ├── *.php                     PHPUnit のユニットケース（ホストはスタブ。PHP 8.0–8.4、PHPUnit 9.6 と 10.5 の 2 バージョン）
-│   └── Integration/<fw>/         フレームワークごとの E2E スイート：実際にフレームワークを導入し、アップロード経路を実際に通す（webman は phpunit.xml で実サーバーを起動し、残り 7 つは各 ci.sh を使う）
+│   └── Integration/<fw>/         フレームワークごとの E2E スイート：実際にフレームワークを導入し、アップロード経路を実際に通す（webman は phpunit.xml で実サーバーを起動し、残り 8 つは各 ci.sh を使う）
 ├── uploads/                      レガシーディレクトリ。プラグインの実行時には使用しない
 └── composer.json
 ```
@@ -137,6 +137,7 @@ aetherupload-webman/
 | Slim | `Bootstrap::create()` を 1 行 | `tests/Integration/slim/` |
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | アプリの `bootstrap` に Bootstrap を登録 | `tests/Integration/yii/` |
+| Yii3 | エントリスクリプトに `Bootstrap::bind()` を 1 行 + ルートファイルで `Bootstrap::routes()` を展開 | `tests/Integration/yii3/` |
 
 > パッケージ名の `webman` は歴史的な経緯によるものです（このプラグインが当初は webman だけをサポートしていたため）。他のホストでの利用には影響しません。
 
@@ -148,7 +149,7 @@ aetherupload-webman/
    **作成しないと必ず失敗します**。カーネルの `createGroupSubDir()` は非再帰の `mkdir` なので、親ディレクトリが無い場合はそのまま false を返し、しかもエラーは一律で大まかな `upload_error` に翻訳されるため、原因がディレクトリだと突き止めるのは困難です。
 2. **ファイルのパブリッシュ**：`aetherupload:publish`（Laravel では `vendor:publish --tag=aetherupload-*`）—— 言語ファイルとフロントエンドの `js` をホストからアクセスできる位置へ配置します。
 
-> コマンド名の区切り文字は各フレームワークのコンソール規約に従います。webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / ネイティブ PHP は `:`、**Yii は `/`** です（`php yii aetherupload/groups`）。以下、各フレームワークの例はそのままコピーして実行できる書き方になっています。
+> コマンド名の区切り文字は各フレームワークのコンソール規約に従います。webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / ネイティブ PHP は `:`、**Yii2 と Yii3 は `/`** です（`php yii aetherupload/groups`）。以下、各フレームワークの例はそのままコピーして実行できる書き方になっています。
 
 ## フレームワークごとの導入手順
 
@@ -289,6 +290,47 @@ php yii aetherupload/publish
 ```
 > パブリッシュ先は**ドキュメントルート**配下の `vendor/aetherupload/js` です（webman のドキュメントルートは `public/`、Yii は `web/`）。サンプルページが参照するのは絶対パス `/vendor/aetherupload/js/…` で、その意味は「ドキュメントルート」です。そのため `YiiPaths::assetPath()` はホストの `@webroot` エイリアスを優先して取得し、取得できない場合は `<app>/web` にフォールバックします。
 
+**Yii3**
+
+Yii3（yiisoft/* の世代）と Yii2 はまったくの別物です：PSR-7 / PSR-15 / PSR-11 コンテナ + `yiisoft/config` の設定グループで、グローバル関数も `Yii::$app` もありません。導入では 3 つのファイルを触ります：
+
+```php
+// 1) public/index.php —— バインドは runner より先でなければならない（runner はコンテナを構築し bootstrap を実行する）
+require __DIR__ . '/../vendor/autoload.php';
+
+\AetherUpload\Adapter\Yii3\Bootstrap::bind(
+    require __DIR__ . '/../config/aetherupload.php',   // aetherupload/publish が生成する
+    $root = dirname(__DIR__),
+    ['redis' => static fn () => new \Predis\Client(['database' => 0])]   // 秒伝に必要、任意
+);
+
+(new \Yiisoft\Yii\Runner\Http\HttpApplicationRunner($root))->run();
+```
+
+```php
+// 2) config/common/routes.php —— 4 本の業務ルート（設定は明示的に渡す。下記参照）
+return [
+    // …ホスト自身のルート…
+    ...\AetherUpload\Adapter\Yii3\Bootstrap::routes(require __DIR__ . '/aetherupload.php'),
+];
+```
+
+```php
+// 3) config/common/params.php —— コンソールコマンド
+'yiisoft/yii-console' => ['commands' => \AetherUpload\Adapter\Yii3\Bootstrap::consoleCommands()],
+```
+
+```bash
+php yii aetherupload/groups     # 同じく注意：Yii3 のコンソール区切り文字も "/"
+php yii aetherupload/publish
+```
+
+> **ミドルウェアスタックを変える必要はありません**：4 本のルートの action は `ServerRequestInterface` を直接受け取り（yiisoft/middleware-dispatcher が型で注入します）、アダプタは action 内で現在のリクエストを登録・解除します。
+> `Bootstrap::routes()` の設定は**明示的な引数**です：ルートファイルはコンテナ構築時に `require` されるため、その時点では `Runtime` がまだバインドされておらず、`Runtime::config()` を読むと必ず「ホストアダプタが未バインド」を投げます。
+> コンソールエントリ（`yii`）も同様に先に `Bootstrap::bind()` を呼びます。コマンド表は `yiisoft/yii-console` の params に渡します。
+> パブリッシュ先：`resource/translations/aetherupload`（言語ファイル）と `public/vendor/aetherupload/js`（フロントエンドリソース）—— Yii3 アプリテンプレートのドキュメントルートは `public/` です。
+> 設定の `middleware_*` は Yii3 では yiisoft/router が解釈できる形態（PSR-15 ミドルウェアのクラス名、インスタンス、または `function ($request, $handler)` の callable）で、対応するルートに適用されます。
+
 **webman**
 
 ```bash
@@ -299,7 +341,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > ヒント：関連する設定を変更する場合は `config/plugin/erikwang2013/aetherupload-webman/app.php` を編集してください。
 
-> 残り 7 つのホストでは、先にアダプタを登録してから「共通の 2 ステップ」を実行する必要があります。**webman も同じコマンドを提供しています**（`php webman aetherupload:groups` / `aetherupload:publish`）が、インストール時にすでに自動で実行済みです。
+> 残り 8 つのホストでは、先にアダプタを登録してから「共通の 2 ステップ」を実行する必要があります。**webman も同じコマンドを提供しています**（`php webman aetherupload:groups` / `aetherupload:publish`）が、インストール時にすでに自動で実行済みです。
 
 # 使い方  
 **ファイルのアップロード**  

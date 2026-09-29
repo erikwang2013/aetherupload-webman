@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
  *
  * 内核只认「逻辑键」（root_dir、groups.file.group_dir …），webman 版把它们藏在
  * plugin.erikwang2013.aetherupload-webman.app. 前缀下，其余框架用 config/aetherupload.php。
- * 同一套默认值写两遍必然会漂移：改了 webman 版忘了改另一份，六个框架的默认行为就悄悄不同了。
+ * 同一套默认值写两遍必然会漂移：改了 webman 版忘了改另一份，九个框架的默认行为就悄悄不同了。
  *
  * 因此这里逐键比对（键集合 + 值），任何一边改动而另一边没跟上，这个测试立刻红。
  */

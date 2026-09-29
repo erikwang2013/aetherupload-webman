@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
  * Hyperf 真实端到端：真骨架（hyperf 3.2 组件 + swoole 6）+ 真 HTTP（curl）+ 真文件系统。
  *
  * 这一层才是「Hyperf 可用」的证据；tests/ 下的单元用例用的是替身，只覆盖内核逻辑。
- * 应用准备与启停见 bootstrap.php / App.php，断言清单见 FlowAssertions（七个框架共用）。
+ * 应用准备与启停见 bootstrap.php / App.php，断言清单见 FlowAssertions（九个框架共用）。
  *
  * 协程隔离另有专门用例：CoroutineIsolationTest。
  */

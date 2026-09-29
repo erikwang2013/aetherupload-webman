@@ -19,7 +19,7 @@ use yii\web\Controller;
  * 本身不认任何登录态，token 挡不住「换个机器直接 POST」的攻击者，开着只会让默认配置下的上传全 400。
  *
  * 动作签名只保留路由变量（与内核控制器一致）；请求数据一律由内核经 Runtime::request() 取，
- * 这样「post() 不过滤」的契约在六个框架下是同一份实现。
+ * 这样「post() 不过滤」的契约在九个框架下是同一份实现。
  */
 class AetherUploadController extends Controller
 {

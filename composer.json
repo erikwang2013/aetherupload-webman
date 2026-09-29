@@ -1,6 +1,6 @@
 {
   "name": "erikwang2013/aetherupload-webman",
-  "description": "AetherUpload for webman and six more frameworks: chunked large-file upload with resumable transfer, instant upload (sec秒传) and integrity check. Framework-agnostic kernel with adapters for webman, Laravel, ThinkPHP, Symfony, Slim, Hyperf and Yii2.",
+  "description": "AetherUpload for webman and eight more hosts: chunked large-file upload with resumable transfer, instant upload (秒传) and integrity check. Framework-agnostic kernel with adapters for webman, native PHP, Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2 and Yii3.",
   "type": "library",
   "license": "MIT",
   "minimum-stability": "dev",
@@ -24,6 +24,9 @@
     "slim",
     "hyperf",
     "yii",
+    "yii3",
+    "psr-7",
+    "psr-15",
     "大文件",
     "large",
     "chunked-upload",
@@ -65,6 +68,7 @@
   },
   "suggest": {
     "predis/predis": "开启秒传（instant_completion）所需；未安装时秒传不可用，其余功能不受影响",
-    "webman/console": "webman 下运行 aetherupload:groups / :build / :clean 三个控制台命令所需（webman 应用的 CLI 本身即由它提供）"
+    "webman/console": "webman 下运行 aetherupload:groups / :build / :clean 三个控制台命令所需（webman 应用的 CLI 本身即由它提供）",
+    "yiisoft/yii-runner-http": "Yii3 宿主所需（连同 yiisoft/router、yiisoft/router-fastroute、yiisoft/yii-console 等）。本包不 require 任何框架，这些由宿主应用自己带"
   }
 }

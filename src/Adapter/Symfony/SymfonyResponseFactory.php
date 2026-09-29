@@ -18,7 +18,7 @@ class SymfonyResponseFactory implements ResponseFactoryInterface
     public function json($data, int $status = 200): object
     {
         // 自己编码而不用 JsonResponse：它的默认 flag 是 JSON_HEX_* 那一套，
-        // 会让同一份错误消息在六个框架下字节不同。契约要求的 flag 在这里显式写死。
+        // 会让同一份错误消息在九个框架下字节不同。契约要求的 flag 在这里显式写死。
         $body = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
         return new SymfonyResponse($body, $status, ['Content-Type' => 'application/json']);

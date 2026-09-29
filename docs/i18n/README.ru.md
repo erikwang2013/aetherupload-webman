@@ -12,7 +12,7 @@
 
 **Его форма**
 
-Один composer-пакет, **ядро не связано с фреймворком-хостом**: один и тот же код работает под webman, нативным PHP (без фреймворка), Laravel, ThinkPHP, Symfony, Slim, Hyperf и Yii2 (см. [Поддерживаемые фреймворки](#поддерживаемые-фреймворки)). Конфигурацию, маршруты, консольные команды, языковые файлы и фронтенд-скрипты для хоста раскладывают команды установки / публикации; база данных не нужна; Redis требуется только при включённой мгновенной загрузке и является опциональной зависимостью.
+Один composer-пакет, **ядро не связано с фреймворком-хостом**: один и тот же код работает под webman, нативным PHP (без фреймворка), Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2 и Yii3 (см. [Поддерживаемые фреймворки](#поддерживаемые-фреймворки)). Конфигурацию, маршруты, консольные команды, языковые файлы и фронтенд-скрипты для хоста раскладывают команды установки / публикации; база данных не нужна; Redis требуется только при включённой мгновенной загрузке и является опциональной зависимостью.
 
 ![Пример страницы](http://wx2.sinaimg.cn/mw690/69e23056gy1fho6ymepjlg20go0aknar.gif) 
 
@@ -25,8 +25,8 @@ aetherupload-webman/
 │   ├── RequestContext.php          изменяемое состояние на запрос / на корутину (снимок конфигурации группы, загруженные языки); в долгоживущем процессе параллельные запросы не путают группы
 │   ├── Contract/                   11 интерфейсов (конфигурация / переводы / запрос / загружаемый файл / ответ / Redis / события / пути / файловая система / контекст / адаптер)
 │   ├── Kernel/                     реализации по умолчанию со стороны ядра: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
-│   ├── Console/                    бизнес-логика трёх консольных команд (Runner) + готовые точки входа для хостов без консольных соглашений, одна и та же для всех семи командных оболочек
-│   ├── Adapter/                    восемь адаптеров: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii
+│   ├── Console/                    бизнес-логика трёх консольных команд (Runner) + готовые точки входа для хостов без консольных соглашений, одна и та же для всех девяти командных оболочек
+│   ├── Adapter/                    девять адаптеров: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
 │   ├── UploadController.php        точка входа загрузки: preprocess (предобработка / определение мгновенной загрузки) и saveChunk (запись фрагмента)
 │   ├── ResourceController.php      точка входа показа и скачивания: display / download, умеет отдавать файлы через nginx напрямую
 │   ├── PartialResource.php         сам файл-фрагмент: сборка пути, дозапись по фрагментам, переименование, проверка размера и типа
@@ -48,7 +48,7 @@ aetherupload-webman/
 │   └── AetherUploadCleanUpDirectory.php  php webman aetherupload:clean N   удаляет устаревшие временные файлы по mtime
 ├── config/
 │   ├── app.php                   конфигурация плагина для webman: группы, маршруты, middleware и различные переключатели
-│   ├── aetherupload.php          та же конфигурация без привязки к фреймворку, базовая для остальных семи адаптеров (совпадение обоих путей зафиксировано ConfigParityTest)
+│   ├── aetherupload.php          та же конфигурация без привязки к фреймворку, базовая для остальных восьми адаптеров (совпадение обоих путей зафиксировано ConfigParityTest)
 │   └── route.php                 четыре маршрута + точки подключения middleware для каждого
 ├── docs/                         документация, картинки и фронтенд-скрипты
 │   ├── aetherupload-architecture.svg  схема архитектуры
@@ -65,7 +65,7 @@ aetherupload-webman/
 ├── views/example.blade.php       исходник страницы-примера, можно брать за образец при подключении
 ├── tests/
 │   ├── *.php                     модульные тесты PHPUnit (хост подменяется заглушками, PHP 8.0–8.4, PHPUnit 9.6 и 10.5)
-│   └── Integration/<fw>/         сквозные наборы, по одному на фреймворк: фреймворк ставится по-настоящему и весь путь загрузки проходится целиком (webman поднимает настоящий сервер через phpunit.xml, остальные семь — через свой ci.sh)
+│   └── Integration/<fw>/         сквозные наборы, по одному на фреймворк: фреймворк ставится по-настоящему и весь путь загрузки проходится целиком (webman поднимает настоящий сервер через phpunit.xml, остальные восемь — через свой ci.sh)
 ├── uploads/                      унаследованный каталог, во время работы плагин его не использует
 └── composer.json
 ```
@@ -137,6 +137,7 @@ aetherupload-webman/
 | Slim | одна строка `Bootstrap::create()` | `tests/Integration/slim/` |
 | Hyperf | `ConfigProvider` | `tests/Integration/hyperf/` |
 | Yii2 | Bootstrap в `bootstrap` приложения | `tests/Integration/yii/` |
+| Yii3 | одна строка `Bootstrap::bind()` во входном скрипте + разворачивание `Bootstrap::routes()` в файле маршрутов | `tests/Integration/yii3/` |
 
 > `webman` в имени пакета — дань истории (изначально плагин поддерживал только webman); на работу с остальными хостами это не влияет.
 
@@ -148,7 +149,7 @@ aetherupload-webman/
    **Без этого работа точно сломается**: `createGroupSubDir()` в ядре — это нерекурсивный `mkdir`, при отсутствии родительского каталога он сразу возвращает false, а ошибка единообразно превращается в общее `upload_error`, и при разборе трудно догадаться, что дело в каталоге.
 2. **Опубликовать файлы**: `aetherupload:publish` (в Laravel — `vendor:publish --tag=aetherupload-*`) — раскладывает языковые файлы и фронтенд `js` туда, откуда хост может их отдать.
 
-> Разделитель в именах команд следует консольным соглашениям каждого фреймворка: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / нативный PHP используют `:`, **Yii — `/`** (`php yii aetherupload/groups`). Примеры для каждой из них ниже можно копировать и запускать как есть.
+> Разделитель в именах команд следует консольным соглашениям каждого фреймворка: webman / Laravel / ThinkPHP / Symfony / Hyperf / Slim / нативный PHP используют `:`, **Yii2 и Yii3 — `/`** (`php yii aetherupload/groups`). Примеры для каждой из них ниже можно копировать и запускать как есть.
 
 ## Подключение по фреймворкам
 
@@ -290,6 +291,47 @@ php yii aetherupload/publish
 ```
 > Публикация идёт в `vendor/aetherupload/js` относительно **корня документа** (у webman корень документа — `public/`, у Yii — `web/`): страница-пример ссылается на абсолютный путь `/vendor/aetherupload/js/…`, подразумевая «корень документа», поэтому `YiiPaths::assetPath()` сначала берёт алиас `@webroot` хоста, а если его нет — откатывается к `<app>/web`.
 
+**Yii3**
+
+Yii3 (поколение `yiisoft/*`) и Yii2 — это две разные вещи: PSR-7 / PSR-15 / PSR-11-контейнер + группы конфигурации `yiisoft/config`, без глобальных функций и без `Yii::$app`. Для подключения нужно тронуть три файла:
+
+```php
+// 1) public/index.php —— привязка должна идти раньше runner (runner соберёт контейнер и выполнит bootstrap)
+require __DIR__ . '/../vendor/autoload.php';
+
+\AetherUpload\Adapter\Yii3\Bootstrap::bind(
+    require __DIR__ . '/../config/aetherupload.php',   // создаётся командой aetherupload/publish
+    $root = dirname(__DIR__),
+    ['redis' => static fn () => new \Predis\Client(['database' => 0])]   // нужен для мгновенной загрузки, опционально
+);
+
+(new \Yiisoft\Yii\Runner\Http\HttpApplicationRunner($root))->run();
+```
+
+```php
+// 2) config/common/routes.php —— четыре бизнес-маршрута (конфигурация передаётся явно, см. ниже)
+return [
+    // …маршруты самого хоста…
+    ...\AetherUpload\Adapter\Yii3\Bootstrap::routes(require __DIR__ . '/aetherupload.php'),
+];
+```
+
+```php
+// 3) config/common/params.php —— консольные команды
+'yiisoft/yii-console' => ['commands' => \AetherUpload\Adapter\Yii3\Bootstrap::consoleCommands()],
+```
+
+```bash
+php yii aetherupload/groups     # тоже внимание: в консоли Yii3 разделитель — "/"
+php yii aetherupload/publish
+```
+
+> **Стек middleware менять не нужно**: action четырёх маршрутов принимает `ServerRequestInterface` напрямую (yiisoft/middleware-dispatcher внедряет по типу), а адаптер внутри action регистрирует и очищает текущий запрос.
+> Конфигурация у `Bootstrap::routes()` — **явный параметр**: файл маршрутов подключается через `require` ещё на этапе сборки контейнера, а в тот момент `Runtime` ещё не привязан, поэтому чтение `Runtime::config()` гарантированно бросит «адаптер хоста ещё не привязан».
+> Консольная точка входа (`yii`) тоже сначала вызывает `Bootstrap::bind()`; таблица команд передаётся в params `yiisoft/yii-console`.
+> Куда идёт публикация: `resource/translations/aetherupload` (языковые файлы) и `public/vendor/aetherupload/js` (фронтенд-ресурсы) — корень документа в шаблоне приложения Yii3 — это `public/`.
+> Ключи `middleware_*` в конфигурации под Yii3 имеют вид, понятный yiisoft/router (имя класса PSR-15 middleware, экземпляр или callable вида `function ($request, $handler)`), и вешаются на соответствующий маршрут.
+
 **webman**
 
 ```bash
@@ -300,7 +342,7 @@ composer require erikwang2013/aetherupload-webman
 >
 > Подсказка: чтобы изменить настройки, правьте `config/plugin/erikwang2013/aetherupload-webman/app.php`.
 
-> У остальных семи хостов сначала регистрируется адаптер, и только потом выполняются «два общих шага». **webman предоставляет те же команды** (`php webman aetherupload:groups` / `aetherupload:publish`), просто при установке они уже прошли автоматически.
+> У остальных восьми хостов сначала регистрируется адаптер, и только потом выполняются «два общих шага». **webman предоставляет те же команды** (`php webman aetherupload:groups` / `aetherupload:publish`), просто при установке они уже прошли автоматически.
 
 # Использование  
 **Загрузка файла**  

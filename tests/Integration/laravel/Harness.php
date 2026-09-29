@@ -18,7 +18,7 @@ use RuntimeException;
  *   AETHERA_E2E_REDIS     '0' 强制视为无 redis（第 8 条秒传跳过）
  *   AETHERA_E2E_REDIS_HOST / _PORT / _DB   redis 连接参数（默认 127.0.0.1:6379 db 4）
  *
- * db 4 是 Laravel 的专属库：六个框架的集成测试会并行跑，共用一个 db 时别人的 flush
+ * db 4 是 Laravel 的专属库：九个框架的集成测试会并行跑，共用一个 db 时别人的 flush
  * 会落在自己的第 8 条（秒传）两次上传之间，产生随机的假红。
  */
 final class Harness
