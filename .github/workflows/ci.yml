@@ -114,30 +114,54 @@ jobs:
         run: vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml
 
       # ---- S3 存储驱动端到端（storage.driver=s3）：真 MinIO + 真上传链路 + mc 独立字节校验 ----
-      - name: Start MinIO (S3 E2E)
-        # mc 镜像没有 shell（entrypoint 就是 mc），只能把参数直接递给它，不能 sh -c
+      # minio/minio 镜像已从 Docker Hub 下架（2026-10 本仓库 CI 实测 pull access denied），
+      # 服务端改为从源码构建（Go 随 runner 预装；二进制走 actions/cache，首跑 2-3 分钟、命中后秒级）；
+      # mc 用官方 GitHub Release 二进制（Hub 镜像可用性存疑；该资产 URL 已核验存在）。
+      - name: Setup Go (MinIO build)
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Cache MinIO server binary
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/minio
+          key: minio-server-${{ runner.os }}-v1  # 需要升级 MinIO 时轮换此 key
+
+      - name: Build MinIO (cache miss) + start server + create bucket
         run: |
-          docker run -d --name aetherupload-e2e-minio -p 19000:9000 \
-            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio server /data
+          if [ ! -x "$HOME/go/bin/minio" ]; then
+            go install github.com/minio/minio@latest
+          fi
+          "$HOME/go/bin/minio" --version
+          mkdir -p /tmp/minio-data
+          MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
+            nohup "$HOME/go/bin/minio" server --address 127.0.0.1:19000 /tmp/minio-data > /tmp/minio.log 2>&1 &
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:19000/minio/health/live > /dev/null; then break; fi
             sleep 1
           done
           # 最后再探一次：30 次都没起来就让这一步失败，而不是带着死服务端去跑 S3 套件
           curl -sf http://127.0.0.1:19000/minio/health/live > /dev/null
-          docker run --rm --network host \
-            -e MC_HOST_e2e=http://minioadmin:minioadmin@127.0.0.1:19000 \
-            minio/mc mb --ignore-existing e2e/aetherupload-e2e
+          curl -fsSL -o /tmp/mc \
+            https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-amd64.RELEASE.2025-08-13T08-35-41Z
+          chmod +x /tmp/mc
+          # 放进 harness 的缓存目录：供其建桶（幂等）与 mc 独立字节校验复用
+          mkdir -p "$RUNNER_TEMP/aetherupload-e2e-cache"
+          cp /tmp/mc "$RUNNER_TEMP/aetherupload-e2e-cache/mc"
+          MC_HOST_e2e="http://minioadmin:minioadmin@127.0.0.1:19000" /tmp/mc mb --ignore-existing e2e/aetherupload-e2e
 
       - name: Run S3 end-to-end suite
-        # 端点/凭据/桶都取 harness 默认值（http://127.0.0.1:19000 是上面容器的端口映射）；
-        # AETHERA_E2E_S3=1 由 phpunit-s3.xml 的 <env> 声明。服务端已探活，harness 不会再起自己的
+        # 端点/凭据/桶取 harness 默认值（http://127.0.0.1:19000 为上面步骤起的本机服务端）；
+        # AETHERA_E2E_S3=1 由 phpunit-s3.xml 的 <env> 声明；服务端已探活，harness 不会再起自己的；
+        # AETHERA_E2E_S3_CACHE 显式指向放入 mc 的缓存目录
+        env:
+          AETHERA_E2E_S3_CACHE: ${{ runner.temp }}/aetherupload-e2e-cache
         run: vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml --no-coverage
 
       - name: Dump MinIO log on failure
         if: failure()
-        run: docker logs aetherupload-e2e-minio 2>&1 | tail -300
+        run: tail -300 /tmp/minio.log 2>/dev/null || true
 
       - name: Upload webman logs on failure
         if: failure()

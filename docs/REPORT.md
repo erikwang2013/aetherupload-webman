@@ -264,9 +264,10 @@ PHP 8.1/8.2/8.3 由 CI 矩阵覆盖；CI 的 MinIO 步骤本机无法执行（�
 
 - **对照表 40+ 家厂商为「协议级兼容 + 文档级核验」**（来源与置信度逐行标注）；端到端仅在真 MinIO 实测。
   GCS 32 片 multipart 上限、OBS 的 unsigned 要求、OSS 拒绝 chunked 三条落地结论未在真实厂商账号实测。
-- **CI 的 MinIO 步骤**：GH runner 可直连 Docker Hub，但本机网络无法执行 GH Actions，该步骤本机未跑
-  （YAML 结构已检、本地等价流程全绿）。本机服务端为 **Go 源码构建的 MinIO**
-  （dl.min.io 与各镜像源的服务端二进制均已下架）。
+- **CI 的 MinIO 步骤**：首次真跑（v1.1.6 的 CI）即抓到 `minio/minio` 镜像已被 Docker Hub 全站下架
+  （runner 直连 Hub 报 `pull access denied ... repository does not exist`）——此前标注的"未验证"由 CI 兑现。
+  已改为 **CI 内从源码构建 MinIO**（Go 随 runner 预装 + `actions/cache` 缓存二进制）并改用官方 GitHub
+  Release 的 mc 二进制（资产 URL 已核验）；本机等价流程全绿，修复后的 CI 绿灯以随后的运行记录为准。
 - **PHP 8.1/8.2/8.3** 本机未实跑（8.0/8.4 已跑，覆盖 PHPUnit 9.6/10.5 两条解析线）。
 - `UploadController::fail()` 以 `KNOWN_ERROR_MESSAGES`（键名）比对翻译文本、永远比不中——**既有已知限制**；
   存储驱动错误到客户端一律呈 `upload_error`（服务端异常链保留原始原因）。
