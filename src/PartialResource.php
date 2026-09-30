@@ -2,6 +2,7 @@
 
 namespace AetherUpload;
 
+use AetherUpload\Storage\Storage;
 
 class PartialResource
 {
@@ -95,17 +96,8 @@ class PartialResource
 
     public function rename($completeName)
     {
-        $completePath = $this->getCompletePath($completeName);
-
-        if ( file_exists($completePath) ) {
-
-            $this->delete();
-        }else{
-
-            if ( rename($this->realPath, $completePath) === false ) {
-                throw new \Exception(Runtime::trans('rename_resource_fail'));
-            }
-        }
+        // 去重/落地语义在 driver 内（LocalStorage = 旧的 file_exists→delete/rename 逻辑原样搬入）
+        Storage::driver()->publish($this->realPath, $this->groupDir, $this->groupSubDir, $completeName);
     }
 
     public function filterBySize($resourceSize)

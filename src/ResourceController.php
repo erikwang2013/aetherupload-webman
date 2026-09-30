@@ -2,6 +2,8 @@
 
 namespace AetherUpload;
 
+use AetherUpload\Storage\Storage;
+
 class ResourceController
 {
 
@@ -37,6 +39,19 @@ class ResourceController
         }
 
         $inlineBlocked = in_array(strtolower(pathinfo($resource->name, PATHINFO_EXTENSION)), self::INLINE_BLOCKED_EXTENSIONS, true);
+
+        $responseParams = $inlineBlocked
+            ? ['response-content-disposition' => self::attachmentDisposition($resource->name)]
+            : [];
+
+        $url = Storage::driver()->url($resource->groupDir, $resource->groupSubDir, $resource->name, $responseParams);
+
+        if ( $url !== null ) {
+            // S3 驱动：302 到预签名 URL（X-Accel 是本地 nginx 概念，s3 下不适用）
+            return Runtime::response()->text('', 302)
+                ->withHeader('Location', $url)
+                ->withHeader('X-Content-Type-Options', 'nosniff');
+        }
 
         // 开启后交由nginx直接发送文件；重定向头为相对root_dir的路径，与配置中alias指向的目录对齐；只由服务端已校验的数据拼出，不含客户端原始输入
         if ( ConfigMapper::get('x_accel_redirect') === true ) {
@@ -82,6 +97,16 @@ class ResourceController
             return Runtime::response()->text('download fail', 404);
         }
 
+        $url = Storage::driver()->url($resource->groupDir, $resource->groupSubDir, $resource->name, [
+            'response-content-disposition' => self::attachmentDisposition($newResource),
+        ]);
+
+        if ( $url !== null ) {
+            return Runtime::response()->text('', 302)
+                ->withHeader('Location', $url)
+                ->withHeader('X-Content-Type-Options', 'nosniff');
+        }
+
         // 开启后交由nginx直接发送文件，Content-Disposition需由程序设置；路径为相对root_dir的路径，只由服务端已校验的数据拼出
         if ( ConfigMapper::get('x_accel_redirect') === true ) {
             return Runtime::response()->text('', 200)
@@ -91,6 +116,12 @@ class ResourceController
         }
 
         return Runtime::response()->download($resource->realPath, $newResource)->withHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    /** 预签名 URL 的 Content-Disposition 覆写值：ASCII 回退 + RFC 5987 双写法；$name 已过消毒（无控制字符） */
+    private static function attachmentDisposition(string $name): string
+    {
+        return 'attachment; filename="' . addcslashes($name, "\"\\") . '"; filename*=UTF-8\'\'' . rawurlencode($name);
     }
 
 

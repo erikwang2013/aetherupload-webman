@@ -193,3 +193,79 @@ Yii3（yiisoft/* 那一代）与仓库里的 Yii2 适配器没有共用代码：
 
 新增的「上传对象不产生拷贝」断言是**反例验证过**的：把 `Kernel/Psr7UploadedFile::getRealPath()` 的
 「本地 uri 原样使用」分支短路掉，探针记录的副本数立刻从 0 变成 1，用例转红；恢复后转绿。
+
+---
+
+# 七、S3 兼容存储支持一轮（2026-10-01）
+
+**特性**：内核新增可切换存储驱动 `storage.driver = local | s3`。默认 `local` 行为逐字节不变；
+`s3` 驱动为**零 composer 新依赖**的内置最小 S3 客户端（SigV4 标准签名 + multipart + 预签名 URL），
+经 `endpoint / region / path_style` 三件配置覆盖 AWS 与各家 S3 兼容厂商（公有云与 MinIO/Ceph 等自托管）。
+完成时成品「落地」到 S3（本地 `.part` 随之清理）、读取走 302 预签名（`response-content-disposition`
+保留展示/下载语义）；分块暂存、`groups`/`clean`/`build`、Install 保持本地语义。
+设计：`docs/superpowers/specs/2026-10-01-s3-storage-design.md`；计划：`docs/superpowers/plans/2026-10-01-s3-storage.md`。
+
+## 测试结果
+
+| 套件 | 命令 | 结果 |
+|---|---|---|
+| 单元（宿主 PHP 8.5.6 / PHPUnit 10.5） | `vendor/bin/phpunit --no-coverage` | **283 tests, 873 assertions, 0 failures**（3 条 deprecation 为既有 `setAccessible`：`TestState.php:119` + `ConfigMapperTest.php:39/:101`，PHP 8.5-only） |
+| 单元 × PHP 8.0（PHPUnit 9.6 解析线） | 新副本 `platform.php 8.0.30` → docker `php:8.0-cli-alpine` | **OK (283 tests, 873 assertions)** |
+| 单元 × PHP 8.4（PHPUnit 10.5 解析线） | 新副本 `platform.php 8.4.0` → docker `php:8.4-cli-alpine` | **OK (283 tests, 873 assertions)** |
+| S3 端到端（真 MinIO + 真 webman + 真 HTTP） | `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml` | **9 tests, 82 assertions, 0 failures**（冷启动起真 MinIO，多轮复跑） |
+| webman local 端到端（既有流程回归） | `vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml` | **4 tests, 48 assertions** |
+| Symfony 端到端（含 `SymfonyConfigParityTest` 运行时 parity） | `bash tests/Integration/symfony/ci.sh` | **OK (16 tests, 130 assertions)** |
+| native（无框架宿主）端到端 | `bash tests/Integration/native/ci.sh` | **OK (8 tests, 60 assertions)** |
+
+PHP 8.1/8.2/8.3 由 CI 矩阵覆盖；CI 的 MinIO 步骤本机无法执行（见「未验证」）。
+
+## 证据锚点
+
+- **SigV4 正确性**：AWS 官方测试向量三例（get-vanilla / get-header-value-trim / post-x-www-form-urlencoded）
+  的 canonical request、string-to-sign、签名**逐字节全等**（`tests/SignatureV4Test.php` 内嵌官方向量；
+  lead 与 tester 各自独立复算）。
+- **字节级校验用 `mc`**（独立于被测客户端，非自证）：桶内对象与源文件 md5 相等；键布局
+  `file/202610/<md5>.<ext>`（无 root_dir 泄漏）；**146B/197B 对象 ETag 带 `-1` 且 `X-Amz-Mp-Parts-Count`
+  佐证 = 真 multipart，43B 为单次 PUT** —— `multipart_threshold` 的 `>` 边界端到端实证。
+- **验签负例**：错误 secret 被真 MinIO 拒绝（`The request signature we calculated does not match`）——
+  服务端确在验签，正例不是空证明。
+- **红证据性质**（reviewer 校准后的表述）：**实现移除即红、恢复即绿（消融 + 变异双证），既有 237 例零误伤**。
+  红态 `283/652, 38E/8F`（46 = 283 − 237，恰为新用例；既有 237 全绿）↔ 绿态 `283/873`；消融副本经
+  `ReflectionClass` 自证加载路径；reviewer 另做 3 处独立变异（SigV4 空行、200 内嵌 `<Error>`、切片哈希
+  回退为整文件）逐条先红后绿并逐字节还原。
+- **如实披露**：① 不主张时间序「先红后绿」——实现与测试文件写于同一时间窗（src/Storage 01:50:30–01:52:56、
+  `S3ClientTest.php` 01:51:17）；44 例原始红定格 01:08–01:28，但放行消息登记 01:50:37 与 coder 首写
+  01:50:30 有 7 秒交叉，**记「未验证」**。② 第 12 例（分片切片哈希）**无实现前原始红灯**，以定向消融 B +
+  01:54 重建快照（S3ClientTest 13 例全红）为证——不写成「12 例均有原始红灯」。
+- **覆盖边界（分层设计，非漏测）**：`S3Client::curlTransport()` 的真实 curl 路径无单测覆盖
+  （单测全走注入 transport）；宿主环境类问题只能由 E2E 兜底——下表的 curl_close 缺陷即此边界实证。
+- **快照绑定**：`src/Storage/S3Client.php` md5 `88c6e259ad21e6b8589852b991e6e094` /
+  sha256 `0a301499…b29c`（mtime 02:03:58）；8.0/8.4 矩阵与全部 E2E 绿均绑定同一哈希（reviewer 逐树复核）。
+
+## 本轮修掉的缺陷（每条红→绿）
+
+| 缺陷 | 影响 | 证据 |
+|---|---|---|
+| **E2E 首轮红：`curl_close()`（PHP 8.5 弃用、8.0 起空操作）被 webman error handler 转为 ErrorException → transport 抛 → 重试 3 次（200/400ms）后 publish 失败**（单测抓不到：FakeS3Transport 不过 curl；CLI 下 deprecation 不抛） | S3 模式下每个上传第 3 块必败（upload_error） | 假 S3 端点只见 3 次同秒 HEAD、零 PUT，0.694s ≈ 重试睡眠；`php -r` 复现 deprecation→异常；删除该调用后 S3 E2E 9/9 |
+| **Symfony 8 移除 `Request::get()`**：混合解析（framework-bundle 7.4 + http-foundation 8.1）下 `SymfonyRequest::input()` 抛 `UndefinedMethodError`（**存量缺陷**，非本特性引入） | Symfony 宿主 4 条共享流程全 500 | repro 500→200；`ci.sh` 4 failures → `OK (16, 130)`；等价性经 vendor v8.1.7 源码逐条核对（`InputBag::get()` 对标量默认值/数组值有硬约束，`has()+all()[$key]` 为逐字等价移植） |
+| **跨月时间炸弹**：`tests/Support/UploadFixtures.php` 硬编码 `'202609'`，10 月起 3 条既有用例必红（**存量**；独立提交 `f36598a`） | 基线非全绿、验收不可达 | 修复前 `238/653/3F` → 修复后 `238/666/0`（666 与历史绿色计数吻合）；改为按内核同一条规则现算 `Util::generateSubDirName()` |
+| **异常消息凭据擦除（加固）**：`S3Client::fail()` 双层擦除（配置 `access_key` 裸串 ≥8 字符 + `<AWSAccessKeyId>` 标签）；首版仅擦标签被探针打回（漏非 XML 兜底与 `<Message>` 内联两形态） | 网关错误页/内联回显可能把 key id 带进日志 | 六例探针 ALL CLEAN（Code/Message/状态/key 全保留）；reviewer 原样复跑独立复验 |
+| **harness 三项（reviewer 报、联调实测定罪）**：① `stopS3Server()` 无所有权校验（共享缓存目录的 server.json → 并发运行互杀服务端）② 骨架 `pid_file` 为字面绝对路径（`rewrite()` 把 `base_path()` 求值落盘 + 骨架覆盖式复制 → 跨目录 pid 污染，实测副本把 pid 写进默认目录）③ webman 2.x 的 HTTP 服务端在 `config/process.php`，而 app-setup 给 `server.php` 加 listen → 18787 与 8787 双监听 | 并发/隔离运行必假红（实测 `Errors: 1, Skipped: 4`；"Address already in use: 8787"） | 修复：pid_file/status/stdout 全改 `$root/runtime/...` 并显式撤销旧 listen/count；process.php 走**定点行改写**（避开 Monolog `__set_state` 致命坑、形态不符即抛）；server.json 记 `owner=getmypid()`、stop 校验不符不杀（孤儿回收为显式开关 `AETHERA_E2E_S3_RECLAIM_ORPHAN=1`，默认不碰）。验收：默认实例 S3 `9/82` + local `4/48`（lead 第一手复跑同数）；隔离实例（`…-iso` + 18788）并存冒烟全绿且 stop 只停自己；所有权五分支 + 孤儿清理经真 MinIO 验证 |
+
+## 未验证 / 已知限制
+
+- **CI 的 MinIO 步骤**：GH runner 可直连 Docker Hub，但本机网络无法执行 GH Actions，该步骤本机未跑
+  （YAML 结构已检、本地等价流程全绿）。本机服务端为 **Go 源码构建的 MinIO**
+  （dl.min.io 与各镜像源的服务端二进制均已下架）。
+- **PHP 8.1/8.2/8.3** 本机未实跑（8.0/8.4 已跑，覆盖 PHPUnit 9.6/10.5 两条解析线）。
+- `UploadController::fail()` 以 `KNOWN_ERROR_MESSAGES`（键名）比对翻译文本、永远比不中——**既有已知限制**；
+  存储驱动错误到客户端一律呈 `upload_error`（服务端异常链保留原始原因）。
+- S3 对象的 `aetherupload:build` 索引重建与清理仍为本地语义；S3 对象生命周期建议用桶策略；
+  `nosniff` 只加在 302 响应（对象响应头由 S3 服务端决定）。
+- `tests/Integration/hyperf/*` 仍有 3 处 `curl_close()`（非本特性 diff；CI 跑 PHP 8.2 不受影响；
+  PHP 8.5 本机跑该套件会踩同一 deprecation）。
+- `access_key` < 8 字符时裸串擦除层不启用（代码注释已写明；真实 AWS key 20 字符、MinIO 默认 10）。
+
+## 产物
+
+本特性与测试见本次提交（16 改 + 13 新）；设计/计划见 `docs/superpowers/{specs,plans}/2026-10-01-s3-storage*.md`。

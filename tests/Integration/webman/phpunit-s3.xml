@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  webman + 真 S3 兼容服务端的端到端：独立入口，与 phpunit.xml（local 模式）共用同一个 webman 骨架。
+  两者都靠 app-setup.php 每次显式重写 storage 配置 + App::start() 的模式标记，避免拿上一次的模式跑
+  （配置在 worker 启动时载入内存，模式变了必须重启服务）。
+
+  <env> 必须显式声明：app-setup.php 在子进程里靠这个环境变量判断写 s3 还是 local 配置，
+  不能依赖外部手动 export（force="true" 让 AETHERA_E2E_S3=1 在本次运行内一定生效）。
+
+  服务端解析顺序见 bootstrap-s3.php / App::ensureS3Server()：env 端点 → 本机缓存二进制 → docker 镜像；
+  一个都没有时用例 markTestSkipped 并写明原因，绝不假绿。
+
+  仓库根目录执行：vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="bootstrap-s3.php"
+         colors="true"
+         cacheResult="false">
+    <php>
+        <env name="AETHERA_E2E_S3" value="1" force="true"/>
+    </php>
+    <testsuites>
+        <testsuite name="AetherUpload webman S3 E2E">
+            <file>S3FlowTest.php</file>
+        </testsuite>
+    </testsuites>
+</phpunit>

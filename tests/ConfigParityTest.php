@@ -88,7 +88,7 @@ class ConfigParityTest extends TestCase
             'extra_mime_types', 'instant_completion', 'resource_redis_expire',
             'middleware_preprocess', 'middleware_uploading', 'middleware_display', 'middleware_download',
             'route_preprocess', 'route_uploading', 'route_display', 'route_download',
-            'lax_mode', 'x_accel_redirect', 'groups',
+            'lax_mode', 'x_accel_redirect', 'groups', 'storage',
         ];
 
         foreach ( ['webman' => $this->webmanConfig(), 'flat' => $this->flatConfig()] as $label => $config ) {

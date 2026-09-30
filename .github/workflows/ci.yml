@@ -113,6 +113,32 @@ jobs:
         # 再用 curl 打真实 HTTP；主套件的 phpunit.xml.dist 已 <exclude>tests/Integration</exclude>
         run: vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml
 
+      # ---- S3 存储驱动端到端（storage.driver=s3）：真 MinIO + 真上传链路 + mc 独立字节校验 ----
+      - name: Start MinIO (S3 E2E)
+        # mc 镜像没有 shell（entrypoint 就是 mc），只能把参数直接递给它，不能 sh -c
+        run: |
+          docker run -d --name aetherupload-e2e-minio -p 19000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio server /data
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:19000/minio/health/live > /dev/null; then break; fi
+            sleep 1
+          done
+          # 最后再探一次：30 次都没起来就让这一步失败，而不是带着死服务端去跑 S3 套件
+          curl -sf http://127.0.0.1:19000/minio/health/live > /dev/null
+          docker run --rm --network host \
+            -e MC_HOST_e2e=http://minioadmin:minioadmin@127.0.0.1:19000 \
+            minio/mc mb --ignore-existing e2e/aetherupload-e2e
+
+      - name: Run S3 end-to-end suite
+        # 端点/凭据/桶都取 harness 默认值（http://127.0.0.1:19000 是上面容器的端口映射）；
+        # AETHERA_E2E_S3=1 由 phpunit-s3.xml 的 <env> 声明。服务端已探活，harness 不会再起自己的
+        run: vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml --no-coverage
+
+      - name: Dump MinIO log on failure
+        if: failure()
+        run: docker logs aetherupload-e2e-minio 2>&1 | tail -300
+
       - name: Upload webman logs on failure
         if: failure()
         uses: actions/upload-artifact@v4

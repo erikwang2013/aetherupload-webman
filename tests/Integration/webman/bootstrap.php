@@ -10,6 +10,7 @@
 require __DIR__ . '/../../../vendor/autoload.php';
 // 目录名是小写 webman，与命名空间大小写不一致，PSR-4 自动加载找不到，这里显式引入
 require_once __DIR__ . '/App.php';
+require_once __DIR__ . '/WebmanHttp.php';
 
 use AetherUpload\Tests\Integration\Webman\App;
 

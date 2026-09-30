@@ -61,6 +61,35 @@ return [
     // 交由 nginx 直发文件（X-Accel-Redirect），补齐 Range 与大文件断点下载
     'x_accel_redirect' => false,
 
+    // 存储驱动：local（默认，行为与历史版本一致）| s3（S3 兼容对象存储）
+    'storage' => [
+
+        'driver' => 'local',
+
+        's3' => [
+            // endpoint 留空 = AWS 默认（按 region 推导）。各家 S3 兼容端点示例（以厂商文档为准）：
+            //   阿里云 OSS   https://s3.oss-{region}.aliyuncs.com
+            //   腾讯云 COS   https://cos.{region}.myqcloud.com
+            //   华为云 OBS   https://obs.{region}.myhuaweicloud.com
+            //   Cloudflare R2 https://{account}.r2.cloudflarestorage.com（region 填 auto）
+            //   Wasabi https://s3.{region}.wasabisys.com · Backblaze B2 https://s3.{region}.backblazeb2.com
+            //   DigitalOcean https://{region}.digitaloceanspaces.com
+            //   Oracle https://{namespace}.compat.objectstorage.{region}.oraclecloud.com
+            //   IBM COS https://s3.{region}.cloud-object-storage.appdomain.cloud
+            //   MinIO / Ceph / Swift(s3api) / 其余自托管：填自家端点，path_style 保持 true
+            // 注：Azure Blob 原生不是 S3 协议，需经 S3 网关；OpenStack Swift 需启用 s3api。
+            'endpoint'   => '',
+            'region'     => 'us-east-1',
+            'bucket'     => '',
+            'access_key' => '',
+            'secret_key' => '',
+            'path_style' => true,      // 自托管（MinIO/Ceph 等）必须 true；AWS 等公有云可用 false
+            'prefix'     => '',        // 对象键前缀（可空）
+            'multipart_threshold' => 104857600, // 超过此大小走 multipart（S3 单次 PUT 硬上限 5GB）
+        ],
+
+    ],
+
     // 资源分组
     'groups' => [
 

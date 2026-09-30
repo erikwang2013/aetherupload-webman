@@ -97,6 +97,7 @@ PHPUnit 10.5（PHP 8.1+；PHP 8.0 上 composer 会解析到 9.6，CI 矩阵同�
 - 涉及真实文件的操作统一用 `TestState::$basePath` 下的临时目录，`tearDown` 清理
 - 断言错误消息：`trans()` 返回 key 本身，如 `assertSame('invalid_resource_size', $e->getMessage())`
 - 上传相关的分块/请求脚手架直接复用 `tests/Support/UploadFixtures.php`（trait），别重写一遍
+- 存储驱动（`storage.driver`）的测试用 `Storage::inject($fake)` 注入（替身见 `tests/FakeStorageDriver.php`），**`tearDown` 必须 `Storage::reset()`**，否则注入的驱动会泄漏到后续用例
 - `commands/` 下的类不在 composer autoload 里，需 `require_once`；且它们继承 Symfony Console 的
   `Command`，方法签名不兼容（如漏了 `execute(): int`）是**加载期 fatal**，会连带掀掉整个 PHPUnit 进程。
   测试命令类时先在子进程里 `require` 一次做可加载性兜底，见 `tests/CleanUpDirectoryCommandTest.php`

@@ -68,6 +68,7 @@
   },
   "suggest": {
     "predis/predis": "开启秒传（instant_completion）所需；未安装时秒传不可用，其余功能不受影响",
+    "ext-curl": "S3 存储驱动（storage.driver=s3）所需；未安装时仅 S3 模式不可用，其余功能不受影响",
     "webman/console": "webman 下运行 aetherupload:groups / :build / :clean 三个控制台命令所需（webman 应用的 CLI 本身即由它提供）",
     "yiisoft/yii-runner-http": "Yii3 宿主所需（连同 yiisoft/router、yiisoft/router-fastroute、yiisoft/yii-console 等）。本包不 require 任何框架，这些由宿主应用自己带"
   }

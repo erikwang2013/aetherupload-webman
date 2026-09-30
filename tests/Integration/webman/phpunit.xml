@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  webman 端到端套件：与主 phpunit.xml.dist 分开跑（主套件已 <exclude>tests/Integration</exclude>）。
+  webman 端到端套件（local 模式）：与主 phpunit.xml.dist 分开跑（主套件已 <exclude>tests/Integration</exclude>）。
   仓库根目录执行：vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml（可加 no-coverage 选项）
 
-  注意：数据源只有 WebmanFlowTest.php；bootstrap.php 负责真装骨架并起服务，App.php/app-setup.php 是它的助手，
+  数据源显式列成 WebmanFlowTest.php：同目录的 S3FlowTest.php 是 S3 模式的另一套（入口 phpunit-s3.xml），
+  不能靠目录扫描混进来。bootstrap.php 负责真装骨架并起服务，WebmanHttp/App.php/app-setup.php 是它的助手，
   文件名都不以 Test.php 结尾，不会被 PHPUnit 当测试收集。
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -12,7 +13,7 @@
          cacheResult="false">
     <testsuites>
         <testsuite name="AetherUpload webman E2E">
-            <directory>.</directory>
+            <file>WebmanFlowTest.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

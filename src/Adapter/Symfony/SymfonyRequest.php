@@ -29,7 +29,30 @@ class SymfonyRequest implements RequestInterface
     {
         $request = $this->current();
 
-        return $request === null ? $default : $request->get($key, $default);
+        if ( $request === null ) {
+            return $default;
+        }
+
+        // 忠实移植 Symfony ≤7.4 的 Request::get()（8.0 已移除）：attributes → query → request，
+        // 存在即返回原值（不做任何过滤/转换），三段都没有才给 $default。
+        // 不能用对象哨兵 + bag->get($key, $sentinel)：8.x 的 query/request 是 InputBag，其 get()
+        // 第二参必须是标量（InputBag.php:40 抛 InvalidArgumentException），且值是数组时还会抛
+        // BadRequestException——而 ≤7.4 的 Request::get() 对数组值原样返回。
+        // has()/all() 未被 InputBag 覆写（ParameterBag 实现，array_key_exists 语义、无类型约束），
+        // 与原实现的每次取值逐字等价。
+        if ( $request->attributes->has($key) ) {
+            return $request->attributes->all()[$key];
+        }
+
+        if ( $request->query->has($key) ) {
+            return $request->query->all()[$key];
+        }
+
+        if ( $request->request->has($key) ) {
+            return $request->request->all()[$key];
+        }
+
+        return $default;
     }
 
     public function file(string $key): ?UploadedFileInterface

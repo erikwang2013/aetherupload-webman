@@ -2,6 +2,7 @@
 
 namespace AetherUpload;
 
+use AetherUpload\Storage\Storage;
 
 class Resource
 {
@@ -34,14 +35,12 @@ class Resource
 
     public function exists()
     {
-        return file_exists($this->realPath);
+        return Storage::driver()->exists($this->groupDir, $this->groupSubDir, $this->name);
     }
 
     public function delete()
     {
-        if ( unlink($this->realPath) === false ) {
-            throw new \Exception(Runtime::trans('delete_resource_fail'));
-        }
+        Storage::driver()->delete($this->groupDir, $this->groupSubDir, $this->name);
 
         return true;
     }
