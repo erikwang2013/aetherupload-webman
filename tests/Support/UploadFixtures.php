@@ -3,6 +3,7 @@
 namespace AetherUpload\Tests\Support;
 
 use AetherUpload\UploadController;
+use AetherUpload\Util;
 use Webman\Http\Request;
 
 /**
@@ -19,15 +20,24 @@ trait UploadFixtures
     /** 分组目录名 */
     private string $fxGroupDir = 'file';
 
-    /** 分块文件落在的子目录名（resource_subdir_rule=month 时为 Ym） */
-    private string $fxSubDir = '202609';
+    /**
+     * 分块文件落在的子目录名。默认按**内核同一条规则现算**（Util::generateSubDirName），
+     * 绝不写死——写死会在跨月后确定性失败（2026-10 修复的正是这个跨月时间炸弹）。
+     * 需要固定值的用例（如 GroupSubDirValidationTest）显式覆盖本属性即可。
+     */
+    private ?string $fxSubDir = null;
+
+    private function subDir(): string
+    {
+        return $this->fxSubDir ?? Util::generateSubDirName();
+    }
 
     /** 临时文件基础名（自行构造请求时用，走 preprocess 时用返回的 resourceTempBaseName） */
     private string $fxTempBase = 'tempabc123';
 
     private function uploadDir(string $subDir = ''): string
     {
-        return TestState::dir($this->fxRootDir, $this->fxGroupDir, $subDir === '' ? $this->fxSubDir : $subDir);
+        return TestState::dir($this->fxRootDir, $this->fxGroupDir, $subDir === '' ? $this->subDir() : $subDir);
     }
 
     private function headerDir(): string
@@ -107,7 +117,7 @@ trait UploadFixtures
             'chunk_index'            => '1',
             'resource_temp_basename' => $this->fxTempBase,
             'resource_ext'           => 'gif',
-            'group_subdir'           => $this->fxSubDir,
+            'group_subdir'           => $this->subDir(),
             'group'                  => 'file',
             'resource_hash'          => 'h',
         ], $overrides), ['resource_chunk' => $chunk ?? $this->chunkObject('')]);
