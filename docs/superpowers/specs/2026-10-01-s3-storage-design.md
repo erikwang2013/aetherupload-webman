@@ -45,7 +45,7 @@ src/Storage/
 - 放 `src/Storage/`（**不是** `src/Contract/`）：`Contract/` 的 11 个接口是**宿主能力**，存储驱动是内核内部服务，两者性质不同，宿主契约数量保持 11 不变。
 - 内核纯度：`src/Storage/` 不 `use` 任何宿主类，只经 `Runtime` 门面。
 - **门面不缓存实例**：`Storage::driver()` 每次按 `Runtime::config()` 现造（构造成本 = 数组解析，可忽略）。绕过 ConfigMapper 单例 → 测试改配置无需 `resetConfigMapper()`，也没有常驻进程/协程下的单例串扰。
-- 测试注入：`Storage::use(?StorageInterface $driver)` / `Storage::reset()` 静态钩子（仿 `Runtime::bind/reset` 既有先例），单测可塞 fake driver 测 Resource/ResourceController 分支。
+- 测试注入：`Storage::inject(?StorageInterface $driver)` / `Storage::reset()` 静态钩子（仿 `Runtime::bind/reset` 既有先例），单测可塞 fake driver 测 Resource/ResourceController 分支。（不用 `use` 当方法名：虽 PHP 7+ 允许半保留字做法名，`inject` 语义更准且零歧义。）
 
 ### 3.1 冻结接口（团队照此施工，不得擅改）
 
@@ -71,8 +71,8 @@ interface StorageInterface
 ```php
 final class Storage
 {
-    public static function driver(): StorageInterface;            // 读 storage.driver：local|s3，未知值抛 \Exception("Unknown storage driver ...")
-    public static function use(?StorageInterface $driver): void;  // 测试注入
+    public static function driver(): StorageInterface;              // 读 storage.driver：local|s3，未知值抛 \Exception("Unknown storage driver ...")
+    public static function inject(?StorageInterface $driver): void; // 测试注入
     public static function reset(): void;
 }
 ```
