@@ -1,9 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # 按用户要求：CI 不再自动执行（不随 push / pull_request 触发）。
+  # 需要时手动运行：gh workflow run ci.yml —— 或在 GitHub Actions 页面点 "Run workflow"。
+  workflow_dispatch:
 
 jobs:
   phpunit:
