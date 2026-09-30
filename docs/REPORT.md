@@ -209,9 +209,9 @@ Yii3（yiisoft/* 那一代）与仓库里的 Yii2 适配器没有共用代码：
 
 | 套件 | 命令 | 结果 |
 |---|---|---|
-| 单元（宿主 PHP 8.5.6 / PHPUnit 10.5） | `vendor/bin/phpunit --no-coverage` | **283 tests, 873 assertions, 0 failures**（3 条 deprecation 为既有 `setAccessible`：`TestState.php:119` + `ConfigMapperTest.php:39/:101`，PHP 8.5-only） |
-| 单元 × PHP 8.0（PHPUnit 9.6 解析线） | 新副本 `platform.php 8.0.30` → docker `php:8.0-cli-alpine` | **OK (283 tests, 873 assertions)** |
-| 单元 × PHP 8.4（PHPUnit 10.5 解析线） | 新副本 `platform.php 8.4.0` → docker `php:8.4-cli-alpine` | **OK (283 tests, 873 assertions)** |
+| 单元（宿主 PHP 8.5.6 / PHPUnit 10.5） | `vendor/bin/phpunit --no-coverage` | **286 tests, 899 assertions, 0 failures**（含 S3 特性 44 例 + payload_signing 增量 3 例；3 条 deprecation 为既有 `setAccessible`：`TestState.php:119` + `ConfigMapperTest.php:39/:101`，PHP 8.5-only） |
+| 单元 × PHP 8.0（PHPUnit 9.6 解析线） | 新副本 `platform.php 8.0.30` → docker `php:8.0-cli-alpine` | **OK (286 tests, 899 assertions)** |
+| 单元 × PHP 8.4（PHPUnit 10.5 解析线） | 新副本 `platform.php 8.4.0` → docker `php:8.4-cli-alpine` | **OK (286 tests, 899 assertions)** |
 | S3 端到端（真 MinIO + 真 webman + 真 HTTP） | `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml` | **9 tests, 82 assertions, 0 failures**（冷启动起真 MinIO，多轮复跑） |
 | webman local 端到端（既有流程回归） | `vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml` | **4 tests, 48 assertions** |
 | Symfony 端到端（含 `SymfonyConfigParityTest` 运行时 parity） | `bash tests/Integration/symfony/ci.sh` | **OK (16 tests, 130 assertions)** |
@@ -239,8 +239,9 @@ PHP 8.1/8.2/8.3 由 CI 矩阵覆盖；CI 的 MinIO 步骤本机无法执行（�
   01:54 重建快照（S3ClientTest 13 例全红）为证——不写成「12 例均有原始红灯」。
 - **覆盖边界（分层设计，非漏测）**：`S3Client::curlTransport()` 的真实 curl 路径无单测覆盖
   （单测全走注入 transport）；宿主环境类问题只能由 E2E 兜底——下表的 curl_close 缺陷即此边界实证。
-- **快照绑定**：`src/Storage/S3Client.php` md5 `88c6e259ad21e6b8589852b991e6e094` /
-  sha256 `0a301499…b29c`（mtime 02:03:58）；8.0/8.4 矩阵与全部 E2E 绿均绑定同一哈希（reviewer 逐树复核）。
+- **快照绑定**：`src/Storage/S3Client.php` 最终版 md5 `6898331ded27a5f946e090c741d2bff3` /
+  sha256 `8733a0d3…`（含 payload_signing 增量）；其前版 `88c6e259…` 为厂商核验前冻结件——S3 E2E 9/82、
+  reviewer 逐树复核与 8.0/8.4 矩阵曾绑定该版并通过；最终版以本轮（payload_signing 后）复跑为证。
 
 ## 本轮修掉的缺陷（每条红→绿）
 
@@ -251,9 +252,18 @@ PHP 8.1/8.2/8.3 由 CI 矩阵覆盖；CI 的 MinIO 步骤本机无法执行（�
 | **跨月时间炸弹**：`tests/Support/UploadFixtures.php` 硬编码 `'202609'`，10 月起 3 条既有用例必红（**存量**；独立提交 `f36598a`） | 基线非全绿、验收不可达 | 修复前 `238/653/3F` → 修复后 `238/666/0`（666 与历史绿色计数吻合）；改为按内核同一条规则现算 `Util::generateSubDirName()` |
 | **异常消息凭据擦除（加固）**：`S3Client::fail()` 双层擦除（配置 `access_key` 裸串 ≥8 字符 + `<AWSAccessKeyId>` 标签）；首版仅擦标签被探针打回（漏非 XML 兜底与 `<Message>` 内联两形态） | 网关错误页/内联回显可能把 key id 带进日志 | 六例探针 ALL CLEAN（Code/Message/状态/key 全保留）；reviewer 原样复跑独立复验 |
 | **harness 三项（reviewer 报、联调实测定罪）**：① `stopS3Server()` 无所有权校验（共享缓存目录的 server.json → 并发运行互杀服务端）② 骨架 `pid_file` 为字面绝对路径（`rewrite()` 把 `base_path()` 求值落盘 + 骨架覆盖式复制 → 跨目录 pid 污染，实测副本把 pid 写进默认目录）③ webman 2.x 的 HTTP 服务端在 `config/process.php`，而 app-setup 给 `server.php` 加 listen → 18787 与 8787 双监听 | 并发/隔离运行必假红（实测 `Errors: 1, Skipped: 4`；"Address already in use: 8787"） | 修复：pid_file/status/stdout 全改 `$root/runtime/...` 并显式撤销旧 listen/count；process.php 走**定点行改写**（避开 Monolog `__set_state` 致命坑、形态不符即抛）；server.json 记 `owner=getmypid()`、stop 校验不符不杀（孤儿回收为显式开关 `AETHERA_E2E_S3_RECLAIM_ORPHAN=1`，默认不碰）。验收：默认实例 S3 `9/82` + local `4/48`（lead 第一手复跑同数）；隔离实例（`…-iso` + 18788）并存冒烟全绿且 stop 只停自己；所有权五分支 + 孤儿清理经真 MinIO 验证 |
+| **payload_signing 第 9 键（厂商核验驱动）**：华为云 OBS 官方 FAQ 规定 SigV4 仅接受 `UNSIGNED-PAYLOAD`/STREAMING 形式，而客户端签真实 payload 哈希 → 「兼容华为云」不成立 | OBS 用户上传必失败（其余厂商用默认值零影响） | 红 3 例（`3 tests, 13 assertions, 3 failures`：三臂同秒对照隔离 payload 位、multipart 四请求全覆盖、非法值约束）→ 绿 `3 tests, 25 assertions`；`payload_signing = hash（默认）| unsigned` 三处配置同步；全集 `286/899` |
+
+## 厂商兼容文档轮（同日）
+
+- **`docs/S3-COMPATIBILITY.md` 落盘**：三路并行核验全球云 14 家 + 欧亚/中国云 15 家 + 企业存储/自托管/备份 16 项，合并为 46 行对照表（含子项），逐行附**来源 URL 与置信度**（官方/二手/推断），另附 12 条「未能核实清单」与「按配置键横向要点」。核验驱动出两个落地结论：**华为云 OBS 需 `payload_signing=unsigned`**（已实现）；**阿里云 OSS、腾讯 COS（2024 后建桶）、华为云 OBS 必须 `path_style=false`**。另发现 Rakuten Cloud 已停服、NIFTY 现属 FJcloud-V、Fastly 确有 S3 兼容对象存储、Azure Blob 原生非 S3（需网关，列有三个真实网关方案）。
+- **配套文档同步**：13 份 README（中文 + 12 语言）新增「可选对象存储」小节与结构树段；`AGENTS.md` / `CLAUDE.md` / `docs/HARNESS.md` / `composer.json`（description+keywords）/ 两个 config 注释同步；三张 SVG 补 Storage 驱动层（XML 校验通过、text 节点 40/40/37 只增不减；**Chrome headless 渲染目检通过**——架构图新增「对象存储（S3 兼容）」节点、生命周期图新增 `driver = s3` 分支、设计图第一列叙事更新为「存储可切换 → 接对象存储 → 读取走 302」，均无碰撞）。
+- **如实说明**：本环节中途遭遇 agent 后端 `402 Insufficient Balance` 中断（vendor-a 核验、doc-i18n-2 位置校正、doc-diagrams 视觉验证三个协作者先后失败）。恢复后：vendor-a 段 14 家由 lead 用官方来源逐一补齐核验；i18n 六份错位由 lead 脚本校正；其余断点由 lead 直接完成。这是环境事件，不影响上述证据链的事实性。
 
 ## 未验证 / 已知限制
 
+- **对照表 40+ 家厂商为「协议级兼容 + 文档级核验」**（来源与置信度逐行标注）；端到端仅在真 MinIO 实测。
+  GCS 32 片 multipart 上限、OBS 的 unsigned 要求、OSS 拒绝 chunked 三条落地结论未在真实厂商账号实测。
 - **CI 的 MinIO 步骤**：GH runner 可直连 Docker Hub，但本机网络无法执行 GH Actions，该步骤本机未跑
   （YAML 结构已检、本地等价流程全绿）。本机服务端为 **Go 源码构建的 MinIO**
   （dl.min.io 与各镜像源的服务端二进制均已下架）。

@@ -219,7 +219,7 @@
   </style>
   <rect class="au-bg" x="0" y="0" width="100%" height="100%"/>
         <title id="archify-diagram-title">AetherUpload-Webman 设计思路</title>
-        <desc id="archify-diagram-description">三条关键决策：约束是什么、怎么选、由此得到什么、代价与上限在哪</desc>
+        <desc id="archify-diagram-description">四条关键决策：约束是什么、怎么选、由此得到什么、代价与上限在哪</desc>
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -272,6 +272,9 @@
         <path data-edge-from="why-3" data-edge-to="what-3" data-edge-key="6" data-edge-id="w3" data-composition-points="625,145;625,209" d="M 625 145 L 625 209" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="what-3" data-edge-to="gain-3" data-edge-key="7" data-edge-id="g3" data-composition-points="625,277;625,341" d="M 625 277 L 625 341" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="gain-3" data-edge-to="cost-3" data-edge-key="8" data-edge-id="c3" data-composition-points="625,393;625,465" d="M 625 393 L 625 465" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="why-4" data-edge-to="what-4" data-edge-key="9" data-edge-id="w4" data-composition-points="140,145;140,209" d="M 140 145 L 140 209" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="what-4" data-edge-to="gain-4" data-edge-key="10" data-edge-id="g4" data-composition-points="140,277;140,341" d="M 140 277 L 140 341" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="gain-4" data-edge-to="cost-4" data-edge-key="11" data-edge-id="c4" data-composition-points="140,393;140,465" d="M 140 393 L 140 465" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
 
         <!-- Nodes -->
         <g id="node-why-1" data-node-id="why-1" data-node-label="&#x6587;&#x4EF6;&#x88AB;&#x53CD;&#x590D;&#x4F20;" tabindex="0" role="button" aria-label="Focus &#x6587;&#x4EF6;&#x88AB;&#x53CD;&#x590D;&#x4F20;, &#x91CD;&#x590D;&#x5360;&#x7528;&#x5E26;&#x5BBD;&#x4E0E;&#x5B58;&#x50A8;, &#x7EA6;&#x675F; / &#x75DB;&#x70B9;" aria-pressed="false" data-node-kind="external" data-node-sublabel="&#x91CD;&#x590D;&#x5360;&#x7528;&#x5E26;&#x5BBD;&#x4E0E;&#x5B58;&#x50A8;" data-node-context="&#x7EA6;&#x675F; / &#x75DB;&#x70B9;">
@@ -422,6 +425,56 @@
           </g>
           <text data-detail-anchor="" x="625" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">禁用下划线</text>
           <text data-detail="context" x="625" y="503" class="t-muted" font-size="8" text-anchor="middle">三段都不含 _</text>
+        </g>
+
+        <g id="node-why-4" data-node-id="why-4" data-node-label="&#x5B58;&#x50A8;&#x9501;&#x6B7B;&#x672C;&#x5730;" tabindex="0" role="button" aria-label="Focus &#x5B58;&#x50A8;&#x9501;&#x6B7B;&#x672C;&#x5730;, &#x6362;&#x540E;&#x7AEF;&#x8981;&#x6539;&#x5185;&#x6838;, &#x7EA6;&#x675F; / &#x75DB;&#x70B9;" aria-pressed="false" data-node-kind="external" data-node-sublabel="&#x6362;&#x540E;&#x7AEF;&#x8981;&#x6539;&#x5185;&#x6838;" data-node-context="&#x7EA6;&#x675F; / &#x75DB;&#x70B9;">
+          <title>存储锁死本地 · 换后端要改内核 · 约束 / 痛点</title>
+          <rect x="90" y="93" width="100" height="52" rx="6" class="c-mask"/>
+          <rect x="90" y="93" width="100" height="52" rx="6" class="c-external" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(96 99) scale(0.6875)">
+            <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
+            <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
+          </g>
+          <text data-detail-anchor="" x="140" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">存储锁死本地</text>
+          <text data-detail="context" x="140" y="131" class="t-muted" font-size="8" text-anchor="middle">换后端要改内核</text>
+        </g>
+
+        <g id="node-what-4" data-node-id="what-4" data-node-label="&#x5B58;&#x50A8;&#x53EF;&#x5207;&#x6362;" tabindex="0" role="button" aria-label="Focus &#x5B58;&#x50A8;&#x53EF;&#x5207;&#x6362;, &#x4E00;&#x4E2A;&#x914D;&#x7F6E;&#x952E;, &#x8BBE;&#x8BA1;&#x51B3;&#x7B56;" aria-pressed="false" data-node-kind="backend" data-node-sublabel="&#x4E00;&#x4E2A;&#x914D;&#x7F6E;&#x952E;" data-node-tag="storage.driver" data-node-context="&#x8BBE;&#x8BA1;&#x51B3;&#x7B56;">
+          <title>存储可切换 · 一个配置键 · 设计决策 · storage.driver</title>
+          <rect x="90" y="209" width="100" height="68" rx="6" class="c-mask"/>
+          <rect x="90" y="209" width="100" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(96 215) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-detail-anchor="" x="140" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">存储可切换</text>
+          <text data-detail="context" x="140" y="247" class="t-muted" font-size="8" text-anchor="middle">一个配置键</text>
+        <text data-detail="fine" x="140" y="265" class="t-backend" font-size="7" text-anchor="middle">storage.driver</text>
+        </g>
+
+        <g id="node-gain-4" data-node-id="gain-4" data-node-label="&#x63A5;&#x5BF9;&#x8C61;&#x5B58;&#x50A8;" tabindex="0" role="button" aria-label="Focus &#x63A5;&#x5BF9;&#x8C61;&#x5B58;&#x50A8;, 40+ &#x5BB6; S3 &#x517C;&#x5BB9;&#x5382;&#x5546;, &#x7531;&#x6B64;&#x5F97;&#x5230;" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="40+ &#x5BB6; S3 &#x517C;&#x5BB9;&#x5382;&#x5546;" data-node-context="&#x7531;&#x6B64;&#x5F97;&#x5230;">
+          <title>接对象存储 · 40+ 家 S3 兼容厂商 · 由此得到</title>
+          <rect x="90" y="341" width="100" height="52" rx="6" class="c-mask"/>
+          <rect x="90" y="341" width="100" height="52" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(96 347) scale(0.6875)">
+            <rect x="2" y="3" width="12" height="10" rx="2"/>
+            <path d="M2 6.5h12"/>
+            <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
+            <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
+          </g>
+          <text data-detail-anchor="" x="140" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">接对象存储</text>
+          <text data-detail="context" x="140" y="379" class="t-muted" font-size="8" text-anchor="middle">40+ 家 S3 兼容厂商</text>
+        </g>
+
+        <g id="node-cost-4" data-node-id="cost-4" data-node-label="&#x8BFB;&#x53D6;&#x8D70; 302" tabindex="0" role="button" aria-label="Focus &#x8BFB;&#x53D6;&#x8D70; 302, &#x54CD;&#x5E94;&#x5934;&#x7531; S3 &#x51B3;&#x5B9A;, &#x4EE3;&#x4EF7;&#x4E0E;&#x4E0A;&#x9650;" aria-pressed="false" data-node-kind="security" data-node-sublabel="&#x54CD;&#x5E94;&#x5934;&#x7531; S3 &#x51B3;&#x5B9A;" data-node-context="&#x4EE3;&#x4EF7;&#x4E0E;&#x4E0A;&#x9650;">
+          <title>读取走 302 · 响应头由 S3 决定 · 代价与上限</title>
+          <rect x="90" y="465" width="100" height="52" rx="6" class="c-mask"/>
+          <rect x="90" y="465" width="100" height="52" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(96 471) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-detail-anchor="" x="140" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">读取走 302</text>
+          <text data-detail="context" x="140" y="503" class="t-muted" font-size="8" text-anchor="middle">响应头由 S3 决定</text>
         </g>
 
         <!-- Edge labels -->

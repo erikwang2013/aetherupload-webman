@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                     implementasi bawaan di sisi inti: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
 │   ├── Console/                    logika bisnis tiga perintah (Runner) + pintu masuk siap pakai untuk host tanpa konvensi konsol, sembilan kerangka perintah memakai salinan yang sama
 │   ├── Adapter/                    sembilan adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                    driver penyimpanan opsional (storage.driver = local | s3): hanya mengurus penulisan dan pembacaan berkas hasil, staging chunk tidak lewat sini
+│   │   ├── StorageInterface.php    antarmuka driver: publish / exists / delete / url
+│   │   ├── LocalStorage.php        driver bawaan: perilaku identik byte-per-byte dengan versi sebelumnya (url selalu null)
+│   │   ├── S3Storage.php           driver s3: verifikasi konfigurasi + penyusunan object key, merangkai S3Client (root_dir tidak bocor ke bucket)
+│   │   ├── S3Client.php            klien S3 minimal bawaan: perakitan SigV4 + transport curl + retry + orkestrasi multipart
+│   │   ├── SignatureV4.php         tanda tangan SigV4 dalam fungsi murni (berpijak pada vektor uji resmi AWS)
+│   │   └── Storage.php             fasad: membuat driver sesuai storage.driver, tanpa cache
 │   ├── UploadController.php        pintu masuk unggah: preprocess (prapemrosesan / penentuan unggah instan) dan saveChunk (penulisan chunk)
 │   ├── ResourceController.php      pintu masuk tampilan dan unduhan: display / download, dapat diserahkan ke nginx untuk pengiriman langsung
 │   ├── PartialResource.php         inti berkas chunk: penyusunan jalur, penambahan per chunk, penggantian nama, verifikasi ukuran dan tipe
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php       kode sumber halaman contoh, dapat langsung dijadikan acuan saat integrasi
 ├── tests/
 │   ├── *.php                     kasus uji unit PHPUnit (host memakai test double, PHP 8.0–8.4, dua versi PHPUnit: 9.6 dan 10.5)
-│   └── Integration/<fw>/         rangkaian end-to-end, satu set per framework: benar-benar memasang framework dan menjalankan jalur unggah sungguhan (webman menjalankan layanan sungguhan lewat phpunit.xml, delapan lainnya lewat ci.sh masing-masing)
+│   └── Integration/<fw>/         rangkaian end-to-end, satu set per framework: benar-benar memasang framework dan menjalankan jalur unggah sungguhan (webman menjalankan layanan sungguhan lewat phpunit.xml, plus rangkaian mode S3 phpunit-s3.xml; delapan lainnya lewat ci.sh masing-masing)
 ├── uploads/                      direktori warisan, tidak dipakai saat plugin berjalan
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **Klien**: cukup sertakan satu `aetherupload-all.js` (berisi zepto dan spark-md5); ia menangani perhitungan md5, pemotongan chunk, bilah progres, dan percobaan ulang otomatis saat koneksi terputus.
 - **Sisi server**: `UploadController` hanya punya dua pintu masuk (prapemrosesan, penulisan chunk); `PartialResource` mengurus jalur, penambahan, dan penggantian nama, sedangkan `Header` hanya mencatat chunkIndex; konfigurasi di-snapshot per request oleh `ConfigMapper` agar request bersamaan pada proses persisten tidak saling tertukar grupnya.
-- **Penyimpanan dan operasional**: di disk selalu hanya ada tiga jenis berkas — chunk `*.part`, resume `_header/`, dan berkas hasil `<md5>.<ext>`; Redis hanya dipakai saat unggah instan dinyalakan; setelah `x_accel_redirect` dinyalakan, berkas dikirim langsung oleh nginx, sekaligus melengkapi Range dan unduhan yang dapat dilanjutkan.
+- **Penyimpanan dan operasional**: di disk selalu hanya ada tiga jenis berkas — chunk `*.part`, resume `_header/`, dan berkas hasil `<md5>.<ext>`; Redis hanya dipakai saat unggah instan dinyalakan; setelah `x_accel_redirect` dinyalakan, berkas dikirim langsung oleh nginx, sekaligus melengkapi Range dan unduhan yang dapat dilanjutkan. Berkas hasil juga dapat dialihkan ke penyimpanan objek kompatibel S3 (`storage.driver = s3`, lihat «Penyimpanan objek opsional (kompatibel S3)» di bawah).
 
 # Filosofi Desain
 
@@ -99,6 +106,34 @@ Dua jalur samping perlu dijelaskan tersendiri:
 
 - **Unggah instan terpenuhi**: pada tahap prapemrosesan ditemukan berkas hasil dengan md5 yang sama, jalurnya langsung dikembalikan, dan tidak ada satu chunk pun yang perlu dikirim.
 - **Terputus dan pemulihan**: pengiriman ulang nomor yang sama dilewati secara idempoten; nomor yang melompat atau chunk yang terpotong hanya mengembalikan galat, **tanpa membersihkan** `.part` dan header, sehingga klien di jaringan lemah dapat terus mencoba ulang sampai chunk yang hilang terpenuhi. Yang benar-benar membersihkan hanya dua situasi — verifikasi chunk terakhir tidak lolos (seluruhnya dibuang), dan pembersihan oleh `aetherupload:clean` yang dijalankan cron berdasarkan mtime setelah halaman ditutup.
+
+# Penyimpanan objek opsional (kompatibel S3)
+
+Berkas hasil secara bawaan disimpan di disk lokal (`storage.driver = local`, perilaku identik byte-per-byte dengan versi sebelumnya); bisa juga dialihkan ke penyimpanan objek kompatibel S3 — tiga setelan `endpoint / region / path_style` berlaku untuk semua penyimpanan yang berbicara protokol S3: AWS dan berbagai cloud publik, maupun swakelola seperti MinIO / Ceph.
+
+```php
+// Berkas konfigurasi plugin ini (webman: config/plugin/erikwang2013/aetherupload-webman/app.php)
+'storage' => [
+    'driver' => 's3',                     // local (bawaan) | s3
+    's3' => [
+        'endpoint'   => '',               // kosong = bawaan AWS (diturunkan dari region); swakelola: isi endpoint sendiri
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // swakelola seperti MinIO / Ceph: wajib true; cloud publik (AWS dsb.): boleh false
+        'prefix'     => '',               // prefiks object key (boleh kosong)
+        'multipart_threshold' => 104857600, // di atas ukuran ini memakai multipart (bawaan 100MB, part tetap 64MB)
+        'payload_signing' => 'hash',       // bentuk hash payload saat menandatangani: hash (bawaan, menandatangani hash konten asli) | unsigned (mengirim UNSIGNED-PAYLOAD; dibutuhkan implementasi yang hanya menerima bentuk itu, mis. Huawei Cloud OBS)
+    ],
+],
+```
+
+- **Tanpa dependensi composer baru**: klien S3 minimal bawaan (tanda tangan standar SigV4 + unggah multipart + URL presigned 302); hanya mode S3 yang butuh `ext-curl` (dependensi soft di `suggest` composer).
+- **Jalur baca**: `display` / `download` mengembalikan 302 ke URL presigned — semantik `Content-Disposition` dan daftar blokir inline (mis. svg dipaksa jadi lampiran) tetap sama.
+- **Semantik lokal tetap terjaga**: staging chunk dan `aetherupload:groups` / `build` / `clean` tetap bekerja pada berkas lokal; `x_accel_redirect` hanya berlaku untuk driver local dan tidak dipakai di mode s3 (302 presigned yang diutamakan).
+- **Cakupan vendor**: desainnya mencakup AWS dan 40+ vendor kompatibel S3; perbandingan vendor demi vendor (dengan sumber dan tingkat keyakinan) ada di [S3-COMPATIBILITY.md](../S3-COMPATIBILITY.md). Catatan: Azure Blob bukan S3 secara asli (perlu gateway S3); OpenStack Swift perlu mengaktifkan s3api. Implementasi yang hanya menerima bentuk `UNSIGNED-PAYLOAD` (mis. Huawei Cloud OBS) terpenuhi dengan menyetel `storage.s3.payload_signing` ke `unsigned`.
+- **Verifikasi end-to-end**: `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml` (perlu server kompatibel S3 di mesin; bila tidak ada, kasus terkait di-skip secara jujur, bukan pura-pura lulus).
 
 # Fitur
 - [x] Bilah progres persentase  

@@ -125,6 +125,7 @@ return [
     |   IBM COS https://s3.{region}.cloud-object-storage.appdomain.cloud
     |   MinIO / Ceph / Swift(s3api) / 其余自托管：填自家端点，path_style 保持 true
     | 注：Azure Blob 原生不是 S3 协议，需经 S3 网关；OpenStack Swift 需启用 s3api。
+    | 完整 40+ 厂商对照（含来源与置信度）见 docs/S3-COMPATIBILITY.md。
     |
     */
 
@@ -141,6 +142,9 @@ return [
             'path_style' => true,      // 自托管（MinIO/Ceph 等）必须 true；AWS 等公有云可用 false
             'prefix'     => '',        // 对象键前缀（可空）
             'multipart_threshold' => 104857600, // 超过此大小走 multipart（S3 单次 PUT 硬上限 5GB）
+            // 签名时 payload 哈希形态：hash（默认，签真实内容哈希；AWS/MinIO/Hetzner 等）
+            // | unsigned（发 UNSIGNED-PAYLOAD；华为云 OBS 等只接受该形式的实现需要它）
+            'payload_signing' => 'hash',
         ],
 
     ],

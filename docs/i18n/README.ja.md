@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                     カーネル側のデフォルト実装：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、NullEventDispatcher、PhpFileTranslator、ClientRedis…
 │   ├── Console/                    3 つのコマンドの業務ロジック（Runner）+ コンソール規約を持たないホスト向けの既成エントリ。9 種類のコマンドシェルが同じ 1 つを共有する
 │   ├── Adapter/                    9 つのアダプタ：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                    オプションのストレージドライバ（storage.driver = local | s3）：完成ファイルの保存と読み出しだけを担い、分割の一時保存はここを通らない
+│   │   ├── StorageInterface.php    ドライバのインターフェース：publish / exists / delete / url
+│   │   ├── LocalStorage.php        デフォルトドライバ：従来バージョンとバイト単位で同じ挙動（url は常に null）
+│   │   ├── S3Storage.php           s3 ドライバ：設定の検証 + オブジェクトキーの組み立て、S3Client を組み込む（root_dir はバケットへ漏れない）
+│   │   ├── S3Client.php            内蔵の最小 S3 クライアント：SigV4 の組み立て + curl 転送 + 再試行 + multipart の編成
+│   │   ├── SignatureV4.php         純関数の SigV4 署名（正しさは AWS 公式テストベクターを基準に固定）
+│   │   └── Storage.php             ファサード：storage.driver に従ってドライバを都度生成し、キャッシュしない
 │   ├── UploadController.php        アップロードの入口：preprocess（前処理 / 秒伝判定）と saveChunk（分割書き込み）
 │   ├── ResourceController.php      表示とダウンロードの入口：display / download。nginx に直接送出させることもできる
 │   ├── PartialResource.php         分割ファイルの本体：パスの組み立て、ブロック単位の追記、リネーム、サイズと種別の検証
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php       サンプルページのソース。導入時にはこれをそのまま参考にできる
 ├── tests/
 │   ├── *.php                     PHPUnit のユニットケース（ホストはスタブ。PHP 8.0–8.4、PHPUnit 9.6 と 10.5 の 2 バージョン）
-│   └── Integration/<fw>/         フレームワークごとの E2E スイート：実際にフレームワークを導入し、アップロード経路を実際に通す（webman は phpunit.xml で実サーバーを起動し、残り 8 つは各 ci.sh を使う）
+│   └── Integration/<fw>/         フレームワークごとの E2E スイート：実際にフレームワークを導入し、アップロード経路を実際に通す（webman は phpunit.xml で実サーバーを起動し、phpunit-s3.xml の S3 モードスイートも別途あり、残り 8 つは各 ci.sh を使う）
 ├── uploads/                      レガシーディレクトリ。プラグインの実行時には使用しない
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **クライアント**：`aetherupload-all.js` を 1 つ読み込むだけです（zepto と spark-md5 を内包）。md5 の計算、分割、進捗バー、通信断時の自動再試行を担当します。
 - **サーバー側**：`UploadController` の入口は 2 つだけです（前処理、分割書き込み）。`PartialResource` がパス・追記・リネームを担い、`Header` は chunkIndex だけを記録します。設定は `ConfigMapper` がリクエスト単位でスナップショットするため、常駐プロセス下でも並行リクエスト同士でグループが混ざりません。
-- **ストレージと運用**：ディスク上に存在するファイルは常に 3 種類だけです。`*.part`（分割データ）、`_header/`（レジューム状態）、`<md5>.<ext>`（完成ファイル）。Redis は秒伝を有効にしたときだけ使用します。`x_accel_redirect` を有効にすると、ファイルは nginx が直接送信するようになり、Range と途中再開ダウンロードも合わせて補えます。
+- **ストレージと運用**：ディスク上に存在するファイルは常に 3 種類だけです。`*.part`（分割データ）、`_header/`（レジューム状態）、`<md5>.<ext>`（完成ファイル）。Redis は秒伝を有効にしたときだけ使用します。`x_accel_redirect` を有効にすると、ファイルは nginx が直接送信するようになり、Range と途中再開ダウンロードも合わせて補えます。 完成ファイルは S3 互換オブジェクトストレージに切り替えて保存することもできます（`storage.driver = s3`、後述の「オプションのオブジェクトストレージ（S3 互換）」を参照）。
 
 # 設計思想
 
@@ -99,6 +106,34 @@ aetherupload-webman/
 
 - **秒伝ヒット**：前処理の段階で同じ md5 の完成ファイルが既にあれば、そのパスをそのまま返し、ブロックを 1 つも送信しません。
 - **中断と復帰**：同じ番号を再送しても冪等にスキップされます。番号が飛んだ場合やブロックが切り詰められた場合はエラーを返すだけで、`.part` と header は**削除しません**。そのため通信が不安定な環境でも、欠けたブロックを補うまでクライアントは再試行を続けられます。実際に削除が起きるのは 2 つの場合だけです。最終ブロックの検証に通らなかった場合（全体を破棄）と、ページを閉じた後に cron が `aetherupload:clean` を実行して mtime に基づき回収する場合です。
+
+# オプションのオブジェクトストレージ（S3 互換）
+
+完成ファイルはデフォルトでローカルディスクに保存されます（`storage.driver = local`、従来バージョンとバイト単位で同じ挙動）。S3 互換オブジェクトストレージへ切り替えることもできます —— `endpoint / region / path_style` の 3 つの設定が、S3 プロトコルを話すあらゆるストレージをカバーします：AWS や各社パブリッククラウドから、MinIO / Ceph などの自前ホストまで。
+
+```php
+// 本プラグインの設定ファイル（webman：config/plugin/erikwang2013/aetherupload-webman/app.php）
+'storage' => [
+    'driver' => 's3',                     // local（デフォルト）| s3
+    's3' => [
+        'endpoint'   => '',               // 空 = AWS のデフォルト（region から導出）。自前ホストは自社エンドポイントを設定
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // MinIO / Ceph などの自前ホストは true 必須。AWS などのパブリッククラウドは false でも可
+        'prefix'     => '',               // オブジェクトキーのプレフィックス（空可）
+        'multipart_threshold' => 104857600, // このサイズを超えると multipart（デフォルト 100MB、S3 のパートは固定 64MB）
+        'payload_signing' => 'hash',       // 署名時の payload ハッシュ形態：hash（デフォルト、実際の内容ハッシュに署名）| unsigned（UNSIGNED-PAYLOAD を送信；Huawei Cloud OBS のようにこの形式しか受け付けない実装で必要）
+    ],
+],
+```
+
+- **composer 依存の追加ゼロ**：内蔵の最小 S3 クライアント（SigV4 標準署名 + multipart アップロード + 302 署名付き URL）。S3 モードでのみ `ext-curl` が必要です（composer `suggest` のソフト依存）。
+- **読み出し経路**：`display` / `download` は署名付き URL への 302 リダイレクトを返します —— `Content-Disposition` と、インラインブラックリスト（svg を強制的に添付にする等）の意味はそのまま保たれます。
+- **ローカルセマンティクスを維持**：分割の一時保存、`aetherupload:groups` / `build` / `clean` は引き続きローカルファイルに対して動作します。`x_accel_redirect` は local ドライバにのみ有効で、s3 モードでは適用されません（302 署名付き URL が優先）。
+- **対応ベンダーの範囲**：設計は AWS と 40+ 社の S3 互換ベンダーをカバーします。ベンダーごとの対照表（出典と信頼度の注記付き）は [docs/S3-COMPATIBILITY.md](../S3-COMPATIBILITY.md) を参照。注意：Azure Blob はネイティブには S3 プロトコルではありません（S3 ゲートウェイが必要）。OpenStack Swift は s3api の有効化が必要です。 Huawei Cloud OBS のように `UNSIGNED-PAYLOAD` 形式しか受け付けない実装では、`storage.s3.payload_signing` を `unsigned` に設定すれば対応できます。
+- **E2E 検証**：`vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml`（本機に S3 互換サーバーが必要です。無い場合、該当する用例は正直にスキップされ、通ったふりはしません）。
 
 # 機能一覧
 - [x] パーセント進捗バー  

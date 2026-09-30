@@ -34,6 +34,7 @@ final class S3Client
             'path_style' => true,
             'prefix' => '',
             'multipart_threshold' => 104857600,
+            'payload_signing' => 'hash',
         ], $config);
 
         foreach ( ['region', 'bucket', 'access_key', 'secret_key'] as $required ) {
@@ -41,6 +42,11 @@ final class S3Client
                 // 只报键名，绝不回显值
                 throw new \Exception('S3 配置缺少 storage.s3.' . $required . '（S3 驱动必需）');
             }
+        }
+
+        if ( ! in_array($config['payload_signing'], ['hash', 'unsigned'], true) ) {
+            // 只报键名与允许值，不回显输入
+            throw new \Exception('S3 配置 storage.s3.payload_signing 非法（只允许 hash 或 unsigned）');
         }
 
         $this->config = $config;
@@ -312,7 +318,10 @@ final class S3Client
         // payload 哈希必须等于**实际发送的字节**：multipart 分片是 [offset, size) 切片，
         // 用整文件哈希会被 MinIO/AWS 拒绝（XAmzContentSHA256Mismatch），且造成 O(n²) 读取放大。
         // 整文件（单次 PUT / 单分片）走 hash_file 快路径，其余哈希切片。
-        if ( $bodyFile === null ) {
+        // payload_signing='unsigned'：华为云 OBS 等实现只接受 UNSIGNED-PAYLOAD（跳过内容哈希，省一次全文件读）。
+        if ( $this->config['payload_signing'] === 'unsigned' ) {
+            $payloadHash = 'UNSIGNED-PAYLOAD';
+        } elseif ( $bodyFile === null ) {
             $payloadHash = hash('sha256', (string)$body);
         } elseif ( $bodyOffset === 0 && ($bodySize === null || $bodySize === filesize($bodyFile)) ) {
             $payloadHash = (string)hash_file('sha256', $bodyFile);

@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                     커널 측 기본 구현: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
 │   ├── Console/                    콘솔 명령 세 개의 비즈니스 로직(Runner) + 콘솔 관례가 없는 호스트의 진입점, 아홉 가지 명령 셸이 같은 구현을 공유합니다
 │   ├── Adapter/                    어댑터 아홉 개: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                    선택적 스토리지 드라이버(storage.driver = local | s3): 완성 파일의 저장과 읽기만 담당하며, 청크 임시 저장은 여기를 거치지 않습니다
+│   │   ├── StorageInterface.php    드라이버 인터페이스: publish / exists / delete / url
+│   │   ├── LocalStorage.php        기본 드라이버: 이전 버전과 바이트 단위로 동일한 동작(url은 항상 null)
+│   │   ├── S3Storage.php           s3 드라이버: 설정 검증 + 객체 키 구성, S3Client 조립(root_dir은 버킷으로 새지 않습니다)
+│   │   ├── S3Client.php            내장 최소 S3 클라이언트: SigV4 조립 + curl 전송 + 재시도 + multipart 편성
+│   │   ├── SignatureV4.php         순수 함수 SigV4 서명(AWS 공식 테스트 벡터를 정확성 기준으로 삼음)
+│   │   └── Storage.php             파사드: storage.driver에 따라 드라이버를 즉석 생성, 캐시하지 않음
 │   ├── UploadController.php        업로드 진입점: preprocess(전처리 / 초고속 판정)와 saveChunk(청크 쓰기)
 │   ├── ResourceController.php      표시와 다운로드 진입점: display / download, nginx 직송 지원
 │   ├── PartialResource.php         청크 파일 본체: 경로 조립, 청크 단위 추가, 이름 변경, 크기와 타입 검증
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php       예제 페이지 소스, 연동할 때 그대로 참고할 수 있습니다
 ├── tests/
 │   ├── *.php                     PHPUnit 단위 케이스(호스트는 대역을 사용, PHP 8.0–8.4, PHPUnit 9.6과 10.5 두 버전)
-│   └── Integration/<fw>/         엔드투엔드 스위트, 프레임워크마다 한 벌: 프레임워크를 실제로 설치하고 업로드 경로를 실제로 실행합니다(webman은 phpunit.xml로 실제 서비스를 띄우고, 나머지 여덟은 각자의 ci.sh)
+│   └── Integration/<fw>/         엔드투엔드 스위트, 프레임워크마다 한 벌: 프레임워크를 실제로 설치하고 업로드 경로를 실제로 실행합니다(webman은 phpunit.xml로 실제 서비스를 띄우고, phpunit-s3.xml의 S3 모드 스위트도 별도로 있으며, 나머지 여덟은 각자의 ci.sh)
 ├── uploads/                      레거시 디렉터리, 플러그인 실행 시에는 사용하지 않습니다
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **클라이언트**: `aetherupload-all.js` 하나만 포함하면 됩니다(zepto와 spark-md5가 들어 있습니다). 이 스크립트가 md5 계산, 청크 분할, 진행률 표시줄, 연결 끊김 자동 재시도를 담당합니다.
 - **서버**: `UploadController`에는 진입점이 두 개뿐입니다(전처리, 청크 쓰기). `PartialResource`가 경로, 추가, 이름 변경을 맡고 `Header`는 chunkIndex만 기록합니다. 설정은 `ConfigMapper`가 요청 단위로 스냅샷을 떠서, 상주 프로세스에서 동시 요청이 서로 그룹을 섞지 않게 합니다.
-- **스토리지와 운영**: 디스크에는 언제나 세 종류의 파일만 있습니다. `*.part` 청크, `_header/` 이어올리기, `<md5>.<ext>` 완성본입니다. Redis는 초고속 업로드를 켰을 때만 사용하고, `x_accel_redirect`를 켜면 nginx가 파일을 직접 보내며 Range와 이어받기까지 함께 해결됩니다.
+- **스토리지와 운영**: 디스크에는 언제나 세 종류의 파일만 있습니다. `*.part` 청크, `_header/` 이어올리기, `<md5>.<ext>` 완성본입니다. Redis는 초고속 업로드를 켰을 때만 사용하고, `x_accel_redirect`를 켜면 nginx가 파일을 직접 보내며 Range와 이어받기까지 함께 해결됩니다. 완성 파일을 S3 호환 오브젝트 스토리지에 저장하도록 전환할 수도 있습니다(`storage.driver = s3`, 아래 "선택적 오브젝트 스토리지(S3 호환)" 참고).
 
 # 설계 접근법
 
@@ -99,6 +106,34 @@ aetherupload-webman/
 
 - **초고속 업로드 적중**: 전처리 단계에서 같은 md5의 완성본을 발견하면 그 경로를 바로 돌려주고, 청크는 하나도 전송하지 않습니다.
 - **중단과 복구**: 같은 번호를 다시 보내면 멱등하게 건너뜁니다. 번호가 건너뛰거나 청크가 잘린 경우에는 오류만 반환하고 `.part`와 header를 **정리하지 않습니다**. 그래서 약한 네트워크에서도 클라이언트가 빠진 청크를 채울 때까지 계속 재시도할 수 있습니다. 실제로 정리되는 경우는 두 가지뿐입니다. 마지막 청크 검증에 실패했을 때(전체 폐기)와, 페이지를 닫은 뒤 cron이 `aetherupload:clean`을 돌려 mtime 기준으로 회수할 때입니다.
+
+# 선택적 오브젝트 스토리지(S3 호환)
+
+완성 파일은 기본적으로 로컬 디스크에 저장됩니다(`storage.driver = local`, 이전 버전과 바이트 단위로 동일한 동작). S3 호환 오브젝트 스토리지로 전환할 수도 있습니다 —— `endpoint / region / path_style` 세 가지 설정이 S3 프로토콜을 쓰는 모든 스토리지를 커버합니다: AWS와 각 퍼블릭 클라우드는 물론 MinIO / Ceph 같은 자체 호스팅까지.
+
+```php
+// 이 플러그인 설정 파일(webman: config/plugin/erikwang2013/aetherupload-webman/app.php)
+'storage' => [
+    'driver' => 's3',                     // local(기본) | s3
+    's3' => [
+        'endpoint'   => '',               // 비우면 AWS 기본(region에서 유도). 자체 호스팅은 자체 엔드포인트 입력
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // MinIO / Ceph 등 자체 호스팅은 true 필수, AWS 등 퍼블릭 클라우드는 false 가능
+        'prefix'     => '',               // 객체 키 프리픽스(비워 둘 수 있음)
+        'multipart_threshold' => 104857600, // 이 크기를 넘으면 multipart(기본 100MB, 파트는 고정 64MB)
+        'payload_signing' => 'hash',       // 서명 시 payload 해시 형태: hash(기본, 실제 내용 해시에 서명) | unsigned(UNSIGNED-PAYLOAD 전송; Huawei Cloud OBS처럼 이 형식만 받아들이는 구현에 필요)
+    ],
+],
+```
+
+- **composer 의존성 추가 없음**: 내장 최소 S3 클라이언트(SigV4 표준 서명 + multipart 업로드 + 302 사전 서명 URL). S3 모드에서만 `ext-curl`이 필요합니다(composer `suggest`의 소프트 의존성).
+- **읽기 경로**: `display` / `download`는 사전 서명 URL로 302 리다이렉트를 반환합니다 —— `Content-Disposition`과 인라인 블랙리스트(svg를 강제로 첨부로 바꾸는 등)의 의미는 그대로 유지됩니다.
+- **로컬 의미 유지**: 청크 임시 저장, `aetherupload:groups` / `build` / `clean`은 계속 로컬 파일에 대해 동작합니다. `x_accel_redirect`는 local 드라이버에만 적용되며 s3 모드에서는 적용되지 않습니다(302 사전 서명이 우선).
+- **벤더 범위**: 설계는 AWS와 40개 이상의 S3 호환 벤더를 커버합니다. 벤더별 대조표(출처와 신뢰도 표기 포함)는 [docs/S3-COMPATIBILITY.md](../S3-COMPATIBILITY.md)를 참고하십시오. 주의: Azure Blob은 네이티브로는 S3 프로토콜이 아닙니다(S3 게이트웨이 필요). OpenStack Swift는 s3api를 켜야 합니다. Huawei Cloud OBS처럼 `UNSIGNED-PAYLOAD` 형식만 받아들이는 구현에서는 `storage.s3.payload_signing`을 `unsigned`로 설정하면 됩니다.
+- **엔드투엔드 검증**: `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml`(로컬에 S3 호환 서버가 필요합니다. 없으면 해당 케이스는 정직하게 건너뛰며 통과한 척하지 않습니다).
 
 # 기능 특성
 - [x] 백분율 진행률 표시줄  

@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                     Implementaciones por defecto del lado del núcleo: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, NullEventDispatcher, PhpFileTranslator, ClientRedis…
 │   ├── Console/                    Lógica de negocio de los tres comandos (Runner) + entrada ya lista para anfitriones sin convención de consola; las nueve envolturas de comandos comparten una sola copia
 │   ├── Adapter/                    Nueve adaptadores: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                    driver de almacenamiento opcional (storage.driver = local | s3): solo deposita y lee el archivo final, el staging de bloques no pasa por aquí
+│   │   ├── StorageInterface.php    interfaz del driver: publish / exists / delete / url
+│   │   ├── LocalStorage.php        driver por defecto: comportamiento idéntico byte a byte a las versiones anteriores (url siempre null)
+│   │   ├── S3Storage.php           driver s3: validación de configuración + construcción de claves de objeto, compone S3Client (root_dir no se filtra al bucket)
+│   │   ├── S3Client.php            cliente S3 mínimo integrado: ensamblado SigV4 + transporte curl + reintentos + orquestación multipart
+│   │   ├── SignatureV4.php         firma SigV4 en funciones puras (anclada a los vectores de prueba oficiales de AWS)
+│   │   └── Storage.php             fachada: crea el driver según storage.driver, sin caché
 │   ├── UploadController.php        Entrada de subida: preprocess (preprocesado / decisión de subida instantánea) y saveChunk (escritura por bloques)
 │   ├── ResourceController.php      Entrada de visualización y descarga: display / download; admite delegar el envío a nginx
 │   ├── PartialResource.php         El archivo por bloques en sí: composición de la ruta, anexado bloque a bloque, renombrado, verificación de tamaño y tipo
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php       Código fuente de la página de ejemplo, listo para consultar al integrar
 ├── tests/
 │   ├── *.php                     Casos unitarios de PHPUnit (con dobles del anfitrión, PHP 8.0–8.4, PHPUnit 9.6 y 10.5)
-│   └── Integration/<fw>/         Suites de extremo a extremo, una por framework: se instala el framework de verdad y se ejecuta la cadena de subida real (webman levanta un servicio real con phpunit.xml; los otros ocho usan su propio ci.sh)
+│   └── Integration/<fw>/         Suites de extremo a extremo, una por framework: se instala el framework de verdad y se ejecuta la cadena de subida real (webman levanta un servicio real con phpunit.xml y además tiene el conjunto en modo S3 de phpunit-s3.xml; los otros ocho usan su propio ci.sh)
 ├── uploads/                      Directorio heredado; el plugin no lo usa en tiempo de ejecución
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **Cliente**: basta con incluir un `aetherupload-all.js` (lleva dentro zepto y spark-md5); se encarga de calcular el md5, trocear, la barra de progreso y el reintento automático tras un corte.
 - **Servidor**: `UploadController` solo tiene dos entradas (preprocesado y escritura por bloques); `PartialResource` gestiona la ruta, el anexado y el renombrado, y `Header` solo registra el chunkIndex; la configuración se copia por petición mediante `ConfigMapper`, para que bajo un proceso residente las peticiones concurrentes no mezclen grupos.
-- **Almacenamiento y operación**: en el disco solo hay siempre tres tipos de archivo: bloques `*.part`, puntos de reanudación en `_header/` y resultados `<md5>.<ext>`; Redis solo se usa si se activa la subida instantánea; con `x_accel_redirect` activado, nginx envía los archivos directamente y de paso cubre Range y la descarga reanudable.
+- **Almacenamiento y operación**: en el disco solo hay siempre tres tipos de archivo: bloques `*.part`, puntos de reanudación en `_header/` y resultados `<md5>.<ext>`; Redis solo se usa si se activa la subida instantánea; con `x_accel_redirect` activado, nginx envía los archivos directamente y de paso cubre Range y la descarga reanudable. Los archivos finales también pueden ir a un almacenamiento de objetos compatible con S3 (`storage.driver = s3`, ver más abajo «Almacenamiento de objetos opcional (compatible con S3)»).
 
 # Idea de diseño
 
@@ -99,6 +106,34 @@ Dos caminos alternativos merecen explicación aparte:
 
 - **Acierto de subida instantánea**: durante el preprocesado se detecta que ya existe un resultado con el mismo md5, así que se devuelve su ruta directamente y no hay que subir ni un bloque.
 - **Interrupción y recuperación**: reenviar el mismo número de secuencia se omite de forma idempotente; un salto en la secuencia o un bloque truncado solo devuelven error y **no limpian** el `.part` ni el header, así que con una red mala el cliente puede seguir reintentando hasta completar el bloque que falta. Solo hay dos casos que sí limpian: que la verificación del último bloque no pase (se descarta todo) y que, tras cerrar la página, cron ejecute `aetherupload:clean` para recuperar según el mtime.
+
+# Almacenamiento de objetos opcional (compatible con S3)
+
+Los archivos finales van por defecto al disco local (`storage.driver = local`, con un comportamiento idéntico byte a byte al de las versiones anteriores); también se pueden cambiar a un almacenamiento de objetos compatible con S3: las tres configuraciones `endpoint / region / path_style` valen para cualquier almacenamiento que hable el protocolo S3 — AWS y las distintas nubes públicas, y autoalojados como MinIO / Ceph.
+
+```php
+// Archivo de configuración de este plugin (webman: config/plugin/erikwang2013/aetherupload-webman/app.php)
+'storage' => [
+    'driver' => 's3',                     // local (por defecto) | s3
+    's3' => [
+        'endpoint'   => '',               // vacío = AWS por defecto (derivado de la region); autoalojado: pon el endpoint propio
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // autoalojados como MinIO / Ceph: obligatorio true; nubes públicas (AWS etc.): puede ser false
+        'prefix'     => '',               // prefijo de las claves de objeto (puede quedar vacío)
+        'multipart_threshold' => 104857600, // por encima de este tamaño se usa multipart (100MB por defecto, partes fijas de 64MB)
+        'payload_signing' => 'hash',       // forma del hash del payload al firmar: hash (por defecto, firma el hash del contenido real) | unsigned (envía UNSIGNED-PAYLOAD; lo necesitan las implementaciones que solo aceptan esa forma, p. ej. Huawei Cloud OBS)
+    ],
+],
+```
+
+- **Sin dependencias nuevas de composer**: cliente S3 mínimo integrado (firma estándar SigV4 + subida multipart + URL prefirmada con 302); solo el modo S3 requiere `ext-curl` (dependencia blanda en el `suggest` de composer).
+- **Ruta de lectura**: `display` / `download` devuelven un 302 a la URL prefirmada — la semántica de `Content-Disposition` y la lista negra de inline (p. ej. svg forzado a adjunto) se mantiene igual.
+- **Semántica local intacta**: el staging de bloques y `aetherupload:groups` / `build` / `clean` siguen operando sobre archivos locales; `x_accel_redirect` solo aplica al driver local y no se usa en modo s3 (el 302 prefirmado tiene prioridad).
+- **Alcance de proveedores**: el diseño cubre AWS y más de 40 proveedores compatibles con S3; la comparación proveedor a proveedor (con fuente y nivel de confianza) está en [S3-COMPATIBILITY.md](../S3-COMPATIBILITY.md). Ojo: Azure Blob no es S3 de forma nativa (necesita una pasarela S3); OpenStack Swift requiere s3api habilitado. Las implementaciones que solo aceptan la forma `UNSIGNED-PAYLOAD` (como Huawei Cloud OBS) quedan cubiertas poniendo `storage.s3.payload_signing` en `unsigned`.
+- **Verificación de extremo a extremo**: `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml` (requiere un servidor compatible con S3 en la máquina; si falta, los casos correspondientes se saltan honestamente, sin fingir que pasan).
 
 # Características
 - [x] Barra de progreso porcentual  

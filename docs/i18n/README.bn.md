@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                     kernel পক্ষের default implementation: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
 │   ├── Console/                    তিনটি command-এর business logic (Runner) + console রীতি নেই এমন host-এর জন্য প্রস্তুত entry; নয়টি command shell একই অংশ ভাগ করে নেয়
 │   ├── Adapter/                    নয়টি adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                    ঐচ্ছিক storage driver (storage.driver = local | s3): কেবল final file রাখা ও পড়ার কাজ, chunk-এর temp staging এখান দিয়ে যায় না
+│   │   ├── StorageInterface.php    driver interface: publish / exists / delete / url
+│   │   ├── LocalStorage.php        default driver: আচরণ আগের সংস্করণের সঙ্গে byte-to-byte অভিন্ন (url সর্বদা null)
+│   │   ├── S3Storage.php           s3 driver: configuration যাচাই + object key নির্মাণ, S3Client যুক্ত করে (root_dir bucket-এ যায় না)
+│   │   ├── S3Client.php            built-in সূক্ষ্মতম S3 client: SigV4 assembly + curl transport + retry + multipart orchestration
+│   │   ├── SignatureV4.php         pure function-এ SigV4 signature (AWS-এর official test vector-কে নির্ভুলতার মানদণ্ড ধরা হয়েছে)
+│   │   └── Storage.php             facade: storage.driver অনুযায়ী driver তৈরি করে, cache করে না
 │   ├── UploadController.php        upload-এর entry point: preprocess (পূর্বপ্রক্রিয়া / Instant Upload যাচাই) ও saveChunk (chunk লেখা)
 │   ├── ResourceController.php      প্রদর্শন ও download-এর entry point: display / download; nginx-কে সরাসরি পাঠানোর সুবিধাও আছে
 │   ├── PartialResource.php         chunk file নিজেই: path তৈরি, এক chunk ধরে ধরে যুক্ত করা, rename, size ও type যাচাই
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php       example page-এর source; সংযুক্ত করার সময় সরাসরি দেখে নেওয়া যায়
 ├── tests/
 │   ├── *.php                     PHPUnit unit test (host-এর জন্য stand-in, PHP 8.0–8.4, PHPUnit 9.6 ও 10.5 উভয় সংস্করণ)
-│   └── Integration/<fw>/         end-to-end suite, প্রতিটি framework-এর জন্য আলাদা: সত্যিকারের framework install করে সত্যিকারের upload path চালানো হয় (webman phpunit.xml দিয়ে আসল service তোলে, বাকি আটটি নিজের ci.sh চালায়)
+│   └── Integration/<fw>/         end-to-end suite, প্রতিটি framework-এর জন্য আলাদা: সত্যিকারের framework install করে সত্যিকারের upload path চালানো হয় (webman phpunit.xml দিয়ে আসল service তোলে, সঙ্গে phpunit-s3.xml-এর S3 mode suite-ও আছে; বাকি আটটি নিজের ci.sh চালায়)
 ├── uploads/                      পুরনো directory, plugin চলার সময় এটি ব্যবহৃত হয় না
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **client**: একটি `aetherupload-all.js` যুক্ত করলেই হয় (এর ভিতরে zepto ও spark-md5 আছে); এটি md5 গণনা, slice, progress bar ও সংযোগ কেটে গেলে স্বয়ংক্রিয় পুনঃচেষ্টার দায়িত্ব নেয়।
 - **server**: `UploadController`-এর মাত্র দুটি entry point (preprocess, chunk লেখা); `PartialResource` path, যুক্ত করা ও rename সামলায়, `Header` কেবল chunkIndex রাখে; configuration `ConfigMapper` দিয়ে প্রতি request-এ snapshot নেওয়া হয়, যাতে স্থায়ী process-এ সমান্তরাল request-গুলো একে অন্যের group মিশিয়ে না ফেলে।
-- **storage ও পরিচালনা**: ডিস্কে সর্বদা মাত্র তিন ধরনের file থাকে — `*.part` chunk, `_header/` resume state, `<md5>.<ext>` চূড়ান্ত file; Redis কেবল Instant Upload চালু থাকলে ব্যবহৃত হয়; `x_accel_redirect` চালু করলে nginx নিজেই file পাঠায় এবং সঙ্গে Range ও resume download-ও যোগ হয়।
+- **storage ও পরিচালনা**: ডিস্কে সর্বদা মাত্র তিন ধরনের file থাকে — `*.part` chunk, `_header/` resume state, `<md5>.<ext>` চূড়ান্ত file; Redis কেবল Instant Upload চালু থাকলে ব্যবহৃত হয়; `x_accel_redirect` চালু করলে nginx নিজেই file পাঠায় এবং সঙ্গে Range ও resume download-ও যোগ হয়। চূড়ান্ত file-গুলো S3-compatible object storage-এও রাখা যায় (`storage.driver = s3`, নিচে «ঐচ্ছিক object storage (S3-compatible)» দেখুন)।
 
 # ডিজাইনের ভাবনা
 
@@ -99,6 +106,34 @@ aetherupload-webman/
 
 - **Instant Upload মিলে যাওয়া**: preprocess পর্যায়ে দেখা যায় একই md5-এর চূড়ান্ত file আগেই আছে, তাই সরাসরি তার path ফেরত দেওয়া হয় — একটি chunk-ও পাঠাতে হয় না।
 - **বিঘ্ন ও পুনরুদ্ধার**: একই নম্বর আবার পাঠালে idempotent-ভাবে বাদ পড়ে; নম্বর লাফিয়ে গেলে বা chunk কাটা পড়লে কেবল error ফেরত আসে, `.part` ও header **মুছে ফেলা হয় না** — তাই দুর্বল network-এ client অনবরত চেষ্টা করে অনুপস্থিত chunk পূরণ করতে পারে। সত্যিকার অর্থে মোছা হয় কেবল দুটি ক্ষেত্রে — শেষ chunk-এর যাচাই ব্যর্থ হলে (পুরোটাই বাতিল হয়), আর page বন্ধ করার পর cron `aetherupload:clean` চালিয়ে mtime অনুযায়ী পুনরুদ্ধার করলে।
+
+# ঐচ্ছিক object storage (S3-compatible)
+
+final file ডিফল্টভাবে local disk-এ থাকে (`storage.driver = local`, আগের সংস্করণের আচরণের সঙ্গে byte-to-byte হুবহু এক); চাইলে S3-compatible object storage-এ switch করা যায় — `endpoint / region / path_style` এই তিনটি configuration যে-কোনো S3 protocol-ভাষী storage-এ খাটে: AWS ও নানা public cloud, এবং MinIO / Ceph-এর মতো self-hosted।
+
+```php
+// এই plugin-এর config ফাইল (webman: config/plugin/erikwang2013/aetherupload-webman/app.php)
+'storage' => [
+    'driver' => 's3',                     // local (ডিফল্ট) | s3
+    's3' => [
+        'endpoint'   => '',               // খালি = AWS default (region থেকে অনুমিত); self-hosted-এ নিজের endpoint দিন
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // MinIO / Ceph-এর মতো self-hosted-এ অবশ্যই true; AWS-এর মতো public cloud-এ false চলবে
+        'prefix'     => '',               // object key-র prefix (খালি রাখা যায়)
+        'multipart_threshold' => 104857600, // এর চেয়ে বড় হলে multipart-এ যায় (ডিফল্ট 100MB, প্রতি part নির্দিষ্ট 64MB)
+        'payload_signing' => 'hash',       // signing-এ payload hash-এর রূপ: hash (ডিফল্ট, আসল content-এর hash sign করে) | unsigned (UNSIGNED-PAYLOAD পাঠায়; কেবল এই রূপ গ্রহণ করা implementation, যেমন Huawei Cloud OBS-এর জন্য দরকার)
+    ],
+],
+```
+
+- **composer-এ নতুন কিছু নেই**: built-in সূক্ষ্মতম S3 client (মানক SigV4 signature + multipart upload + 302 presigned URL); `ext-curl` লাগে কেবল S3 mode-এ (composer `suggest`-এর soft নির্ভরতা)।
+- **read path**: `display` / `download` 302 দিয়ে presigned URL-এ পাঠায় — `Content-Disposition` ও inline blocklist (যেমন svg জোর করে attachment) semantics আগের মতোই থাকে।
+- **local semantics অটুট**: chunk-এর temp staging এবং `aetherupload:groups` / `build` / `clean` আগের মতোই local file-এ চলে; `x_accel_redirect` কেবল local driver-এ খাটে, s3 mode-এ নয় (302 presigned URL-ই অগ্রাধিকার)।
+- **vendor পরিসর**: design-টি AWS ও 40+ S3-compatible vendor-কে কভার করে; vendor-ভিত্তিক তুলনা (source ও confidence-সহ) [S3-COMPATIBILITY.md](../S3-COMPATIBILITY.md)-এ। লক্ষ্য করুন: Azure Blob আসলে S3 নয় (S3 gateway লাগে); OpenStack Swift-এ s3api চালু করতে হয়। যেসব implementation কেবল `UNSIGNED-PAYLOAD` রূপ নেয় (যেমন Huawei Cloud OBS), তাদের জন্য `storage.s3.payload_signing` = `unsigned` করে দিলেই চলে।
+- **end-to-end যাচাই**: `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml` (মেশিনে S3-compatible server থাকা চাই; না থাকলে সংশ্লিষ্ট case সৎভাবে skip হয়, পাস হওয়ার ভান নয়)।
 
 # বৈশিষ্ট্য
 - [x] শতকরা progress bar  

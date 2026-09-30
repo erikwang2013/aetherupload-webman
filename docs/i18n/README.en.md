@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                           default kernel-side implementations: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis…
 │   ├── Console/                          business logic (Runner) for the three commands + ready-made entry points for hosts with no console convention; nine command shells share the same copy
 │   ├── Adapter/                          nine adapters: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                          optional storage driver (storage.driver = local | s3): handles only committing and reading the finished file; chunk staging does not go through it
+│   │   ├── StorageInterface.php          driver interface: publish / exists / delete / url
+│   │   ├── LocalStorage.php              the default driver: byte-for-byte the behaviour of previous releases (url is always null)
+│   │   ├── S3Storage.php                 the s3 driver: config validation + object key construction, assembles the S3Client (root_dir never leaks into the bucket)
+│   │   ├── S3Client.php                  the built-in minimal S3 client: SigV4 assembly + curl transport + retries + multipart orchestration
+│   │   ├── SignatureV4.php               pure-function SigV4 signing (correctness anchored to the official AWS test vectors)
+│   │   └── Storage.php                   the facade: builds the driver from storage.driver on demand, with no caching
 │   ├── UploadController.php              upload entry point: preprocess (preprocessing / instant-upload check) and saveChunk (chunk write)
 │   ├── ResourceController.php            display and download entry point: display / download, can hand the file to nginx
 │   ├── PartialResource.php               the chunked file itself: path assembly, append per chunk, rename, size and type validation
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php               example page source, ready to copy when integrating
 ├── tests/
 │   ├── *.php                             PHPUnit unit cases (host stubs stand in for the framework; PHP 8.0–8.4, both PHPUnit 9.6 and 10.5)
-│   └── Integration/<fw>/                 end-to-end suites, one per framework: a real framework install and a real upload path (webman starts a real server via phpunit.xml, the other eight run their own ci.sh)
+│   └── Integration/<fw>/                 end-to-end suites, one per framework: a real framework install and a real upload path (webman starts a real server via phpunit.xml plus an S3-mode suite via phpunit-s3.xml; the other eight run their own ci.sh)
 ├── uploads/                              legacy directory, unused at runtime
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **Client**: include one script, `aetherupload-all.js` (zepto and spark-md5 are bundled). It computes the md5, slices the file, drives the progress bar, and retries automatically after a dropped connection.
 - **Server**: `UploadController` has only two entry points (preprocess, chunk write). `PartialResource` handles paths, appending, and renaming; `Header` stores nothing but chunkIndex. Config is snapshotted per request by `ConfigMapper`, so concurrent requests on a resident process never leak one group's settings into another.
-- **Storage and operations**: only three kinds of file ever exist on disk — `*.part` chunks, `_header/` resume state, and finished `<md5>.<ext>` files. Redis is used only when instant upload is enabled. With `x_accel_redirect` on, nginx sends the files directly, which also brings Range and resumable downloads.
+- **Storage and operations**: only three kinds of file ever exist on disk — `*.part` chunks, `_header/` resume state, and finished `<md5>.<ext>` files. Redis is used only when instant upload is enabled. With `x_accel_redirect` on, nginx sends the files directly, which also brings Range and resumable downloads. Finished files can also be switched to S3-compatible object storage (`storage.driver = s3`, see "Optional object storage (S3-compatible)" below).
 
 # Design rationale
 
@@ -99,6 +106,34 @@ Two side paths deserve a separate explanation:
 
 - **Instant-upload hit**: preprocess finds that a finished file with the same md5 already exists. Its path is returned straight away, and not a single chunk is transferred.
 - **Interruption and recovery**: resending the same chunk index is skipped idempotently. A jump in the index sequence or a truncated chunk only returns an error; it **does not clean up** the `.part` file or the header, so on a flaky network the client can keep retrying until the missing chunk is filled in. Only two things really clean up — a failed final-chunk validation (the whole file is discarded), and `aetherupload:clean`, run by cron after the page is closed, reclaiming files by mtime.
+
+# Optional object storage (S3-compatible)
+
+Finished files land on the local disk by default (`storage.driver = local`, byte-for-byte the behaviour of previous releases). They can also be switched to S3-compatible object storage — the `endpoint / region / path_style` trio of settings covers anything that speaks the S3 protocol: AWS and the public clouds as well as self-hosted MinIO / Ceph.
+
+```php
+// this plugin's config file (webman: config/plugin/erikwang2013/aetherupload-webman/app.php)
+'storage' => [
+    'driver' => 's3',                     // local (default) | s3
+    's3' => [
+        'endpoint'   => '',               // empty = AWS default (derived from region); self-hosted: your own endpoint
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // must be true for self-hosted MinIO / Ceph etc.; may be false on AWS and similar public clouds
+        'prefix'     => '',               // object key prefix (may be empty)
+        'multipart_threshold' => 104857600, // above this size uploads go multipart (default 100MB, parts fixed at 64MB)
+        'payload_signing' => 'hash',       // payload hash form when signing: hash (default, signs the real content hash) | unsigned (sends UNSIGNED-PAYLOAD; needed by implementations such as Huawei Cloud OBS that only accept that form)
+    ],
+],
+```
+
+- **Zero new composer dependencies**: a built-in minimal S3 client (standard SigV4 signing + multipart upload + 302 presigned URLs). Only S3 mode needs `ext-curl` (a soft dependency in composer `suggest`).
+- **Read path**: `display` / `download` return a 302 redirect to a presigned URL — the `Content-Disposition` semantics and the inline blacklist (e.g. an svg forced to an attachment) are preserved as before.
+- **Local semantics kept**: chunk staging, `aetherupload:groups` / `build` / `clean` keep operating on local files; `x_accel_redirect` applies to the local driver only and is not used in s3 mode (the 302 presign takes precedence).
+- **Vendor coverage**: the design covers AWS and 40+ S3-compatible vendors; the vendor-by-vendor comparison (with sources and confidence annotations) is in [docs/S3-COMPATIBILITY.md](../S3-COMPATIBILITY.md). Note: Azure Blob is not natively S3 (it needs an S3 gateway); OpenStack Swift needs s3api enabled. Implementations that only accept the `UNSIGNED-PAYLOAD` form, such as Huawei Cloud OBS, work once `storage.s3.payload_signing` is set to `unsigned`.
+- **End-to-end verification**: `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml` (requires an S3-compatible server on the machine; where absent, the related cases skip honestly instead of pretending to pass).
 
 # Features
 - [x] Percentage progress bar  

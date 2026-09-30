@@ -8,7 +8,10 @@
 > 每个框架一套（webman / laravel / thinkphp / symfony / slim / hyperf / yii / yii3 / native），
 > 真装框架、真跑 `preprocess → 分块 → 完成 → 下载`，用来证明"在该框架下确实能用"——
 > 这一点替身证明不了。入口是 `vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml`（webman，
-> 起真服务 + curl）或其余八个宿主各目录下的 `ci.sh`（本地与 CI 共用同一条路），
+> 起真服务 + curl）或其余八个宿主各目录下的 `ci.sh`（本地与 CI 共用同一条路）；
+> webman 另有 S3 模式套件 `tests/Integration/webman/phpunit-s3.xml`（`<env>` 强制 `AETHERA_E2E_S3=1`，
+> 以 `storage.driver=s3` 跑同一条链路：真 S3 兼容服务端自动起本地 MinIO，或用 `AETHERA_E2E_S3_ENDPOINT`
+> 指定端点，两者都无时用例如实 skip、不假装通过），
 > 共享断言在 `tests/Integration/FlowAssertions.php`，新框架只需实现 `send()` 与 `appBasePath()`。
 > 主 `phpunit.xml.dist` 已 `<exclude>tests/Integration</exclude>`，两套互不干扰。
 

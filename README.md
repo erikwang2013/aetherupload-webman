@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                     内核侧默认实现：AbstractAdapter、PrefixedConfig、Filesystem、NullRedis、PhpFileTranslator、ClientRedis…
 │   ├── Console/                    三个命令的业务逻辑（Runner）+ 无控制台约定宿主的现成入口，九种命令壳共用同一份
 │   ├── Adapter/                    九个适配器：Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                    可选存储驱动（storage.driver = local | s3）：只管成品落地与读取，分块暂存不经这里
+│   │   ├── StorageInterface.php    驱动接口：publish / exists / delete / url
+│   │   ├── LocalStorage.php        默认驱动：行为与历史版本逐字节一致（url 恒 null）
+│   │   ├── S3Storage.php           s3 驱动：配置校验 + 对象键构造，组装 S3Client（root_dir 不泄漏进桶）
+│   │   ├── S3Client.php            内置最小 S3 客户端：SigV4 装配 + curl 传输 + 重试 + multipart 编排
+│   │   ├── SignatureV4.php         纯函数 SigV4 签名（以 AWS 官方测试向量为正确性锚）
+│   │   └── Storage.php             门面：按 storage.driver 现造驱动，不缓存
 │   ├── UploadController.php        上传入口：preprocess（预处理 / 秒传判定）与 saveChunk（分块写入）
 │   ├── ResourceController.php      展示与下载入口：display / download，支持交给 nginx 直发
 │   ├── PartialResource.php         分块文件本体：路径拼装、逐块追加、重命名、大小与类型校验
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php       示例页源码，接入时可直接参考
 ├── tests/
 │   ├── *.php                     PHPUnit 单元用例（宿主用替身，PHP 8.0–8.4，PHPUnit 9.6 与 10.5 双版本）
-│   └── Integration/<fw>/         端到端套件，每个框架一套：真装框架、真跑上传链路（webman 走 phpunit.xml 起真服务，其余八个走各自的 ci.sh）
+│   └── Integration/<fw>/         端到端套件，每个框架一套：真装框架、真跑上传链路（webman 走 phpunit.xml 起真服务、另有 phpunit-s3.xml 的 S3 模式套件，其余八个走各自的 ci.sh）
 ├── uploads/                      遗留目录，插件运行时不使用
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **客户端**：引入一个 `aetherupload-all.js` 即可（内含 zepto 与 spark-md5），它负责算 md5、切片、进度条与断线自动重试。
 - **服务端**：`UploadController` 只有两个入口（预处理、分块写入）；`PartialResource` 管路径、追加与重命名，`Header` 只记 chunkIndex；配置经 `ConfigMapper` 按请求快照，避免常驻进程下并发请求互相串组。
-- **存储与运维**：磁盘上永远只有三类文件——`*.part` 分块、`_header/` 断点、`<md5>.<ext>` 成品；Redis 仅在开启秒传时使用；开启 `x_accel_redirect` 后由 nginx 直发文件，顺带补上 Range 与断点下载。
+- **存储与运维**：磁盘上永远只有三类文件——`*.part` 分块、`_header/` 断点、`<md5>.<ext>` 成品；Redis 仅在开启秒传时使用；开启 `x_accel_redirect` 后由 nginx 直发文件，顺带补上 Range 与断点下载。成品也可改落 S3 兼容对象存储（`storage.driver = s3`，见下文「可选对象存储（S3 兼容）」）。
 
 # 设计思路
 
@@ -99,6 +106,34 @@ aetherupload-webman/
 
 - **秒传命中**：预处理阶段发现相同 md5 已有成品，直接返回其路径，一个分块都不用传。
 - **中断与恢复**：重发同一序号会被幂等跳过；序号跳变或分块被截断只返回错误，**不会清理** `.part` 与 header，所以弱网下客户端可以持续重试直到补上缺的那一块。真正会清理的只有两种情况——最后一块校验不通过（整份丢弃），以及页面关闭后由 cron 跑 `aetherupload:clean` 按 mtime 回收。
+
+# 可选对象存储（S3 兼容）
+
+成品文件默认落本地磁盘（`storage.driver = local`，与历史版本行为逐字节一致）；也可以切换为 S3 兼容对象存储——`endpoint / region / path_style` 三件配置适用于一切讲 S3 协议的存储，AWS 与各家公有云、MinIO / Ceph 等自托管通吃。
+
+```php
+// 本插件配置文件（webman：config/plugin/erikwang2013/aetherupload-webman/app.php）
+'storage' => [
+    'driver' => 's3',                     // local（默认）| s3
+    's3' => [
+        'endpoint'   => '',               // 留空 = AWS 默认（按 region 推导）；自托管填自家端点
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // MinIO / Ceph 等自托管必须 true；AWS 等公有云可用 false
+        'prefix'     => '',               // 对象键前缀（可空）
+        'multipart_threshold' => 104857600, // 超过此大小走 multipart（默认 100MB，分片固定 64MB）
+        'payload_signing' => 'hash',       // 签名时 payload 哈希形态：hash（默认，签真实内容哈希）| unsigned（发 UNSIGNED-PAYLOAD；华为云 OBS 等只接受该形式的实现需要它）
+    ],
+],
+```
+
+- **零新增 composer 依赖**：内置最小 S3 客户端（SigV4 标准签名 + multipart 上传 + 302 预签名 URL），仅 S3 模式需要 `ext-curl`（composer `suggest` 里的软依赖）。
+- **读路径**：`display` / `download` 返回 302 跳转到预签名 URL——`Content-Disposition` 与内联黑名单（如 svg 强制转为附件）语义照常保留。
+- **保持本地语义**：分块暂存、`aetherupload:groups` / `build` / `clean` 仍作用于本地文件；`x_accel_redirect` 只对 local 驱动生效，s3 模式下不适用（302 预签名优先）。
+- **厂商范围**：设计覆盖 AWS 与 40+ 家 S3 兼容厂商，逐家对照（含来源与置信度标注）见 [docs/S3-COMPATIBILITY.md](docs/S3-COMPATIBILITY.md)。注意：Azure Blob 原生不是 S3 协议（需经 S3 网关）；OpenStack Swift 需启用 s3api。华为云 OBS 等只接受 `UNSIGNED-PAYLOAD` 形式的实现，把 `storage.s3.payload_signing` 设为 `unsigned` 即可。
+- **端到端验证**：`vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml`（需本机有 S3 兼容服务端；缺则相关用例如实跳过，不假装通过）。
 
 # 功能特性
 - [x] 百分比进度条  

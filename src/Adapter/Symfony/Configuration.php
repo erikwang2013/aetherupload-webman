@@ -115,6 +115,7 @@ class Configuration implements ConfigurationInterface
                                 ->booleanNode('path_style')->defaultTrue()->end()
                                 ->scalarNode('prefix')->defaultValue('')->end()
                                 ->integerNode('multipart_threshold')->defaultValue(104857600)->end()
+                                ->scalarNode('payload_signing')->defaultValue('hash')->end()
                             ->end()
                         ->end()
                     ->end()

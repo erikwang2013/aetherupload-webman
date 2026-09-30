@@ -27,6 +27,13 @@ aetherupload-webman/
 │   ├── Kernel/                     Standardimplementierungen der Kernseite: AbstractAdapter, PrefixedConfig, Filesystem, NullRedis, PhpFileTranslator, ClientRedis …
 │   ├── Console/                    Geschäftslogik der drei Konsolenbefehle (Runner) + fertige Einstiegspunkte für Hosts ohne Konsolenkonvention; die neun Befehlshüllen teilen sich dieselbe
 │   ├── Adapter/                    neun Adapter: Webman / Native / Laravel / ThinkPhp / Symfony / Slim / Hyperf / Yii / Yii3
+│   ├── Storage/                    optionaler Speichertreiber (storage.driver = local | s3): nur für das Ablegen und Lesen fertiger Dateien zuständig; die Chunk-Zwischenspeicherung läuft nicht darüber
+│   │   ├── StorageInterface.php    Treiber-Interface: publish / exists / delete / url
+│   │   ├── LocalStorage.php        Standardtreiber: byteweise identisch mit dem Verhalten früherer Versionen (url stets null)
+│   │   ├── S3Storage.php           s3-Treiber: Konfigurationsprüfung + Aufbau des Objekt-Keys, setzt den S3Client zusammen (root_dir gelangt nicht in den Bucket)
+│   │   ├── S3Client.php            eingebauter minimaler S3-Client: SigV4-Zusammenbau + curl-Transport + Wiederholungen + Multipart-Orchestrierung
+│   │   ├── SignatureV4.php         reine Funktion für SigV4-Signierung (Korrektheit an den offiziellen AWS-Testvektoren verankert)
+│   │   └── Storage.php             Fassade: erzeugt den Treiber anhand von storage.driver jeweils neu, ohne Caching
 │   ├── UploadController.php        Upload-Einstieg: preprocess (Vorverarbeitung / Sofort-Upload-Prüfung) und saveChunk (Chunk-Schreiben)
 │   ├── ResourceController.php      Einstieg für Anzeige und Download: display / download, kann an nginx zur Direktauslieferung übergeben werden
 │   ├── PartialResource.php         die Chunk-Datei selbst: Pfadaufbau, Anhängen Chunk für Chunk, Umbenennen, Größen- und Typprüfung
@@ -65,7 +72,7 @@ aetherupload-webman/
 ├── views/example.blade.php       Quellcode der Beispielseite, kann bei der Integration direkt als Vorlage dienen
 ├── tests/
 │   ├── *.php                     PHPUnit-Unit-Tests (Host durch Attrappen ersetzt, PHP 8.0–8.4, PHPUnit in den Versionen 9.6 und 10.5)
-│   └── Integration/<fw>/         End-to-End-Suiten, eine pro Framework: echtes Framework installiert, echte Upload-Kette durchlaufen (webman startet über phpunit.xml einen echten Dienst, die übrigen acht nutzen ihr jeweiliges ci.sh)
+│   └── Integration/<fw>/         End-to-End-Suiten, eine pro Framework: echtes Framework installiert, echte Upload-Kette durchlaufen (webman startet über phpunit.xml einen echten Dienst und hat zusätzlich eine S3-Modus-Suite über phpunit-s3.xml; die übrigen acht nutzen ihr jeweiliges ci.sh)
 ├── uploads/                      Altbestand, wird zur Laufzeit des Plugins nicht verwendet
 └── composer.json
 ```
@@ -81,7 +88,7 @@ aetherupload-webman/
 
 - **Client**: Es genügt, ein `aetherupload-all.js` einzubinden (enthält zepto und spark-md5). Es übernimmt md5-Berechnung, Chunking, Fortschrittsbalken und den automatischen erneuten Versuch nach einem Abbruch.
 - **Serverseite**: `UploadController` hat nur zwei Einstiegspunkte (Vorverarbeitung, Chunk-Schreiben); `PartialResource` verwaltet Pfad, Anhängen und Umbenennen, `Header` notiert nur den chunkIndex; die Konfiguration wird von `ConfigMapper` pro Request als Snapshot gehalten, damit nebenläufige Requests in einem Dauerprozess nicht über Gruppen hinweg vermischt werden.
-- **Speicherung und Betrieb**: Auf der Festplatte liegen immer nur drei Arten von Dateien – `*.part`-Chunks, der Fortsetzungsstand unter `_header/` und die fertigen `<md5>.<ext>`. Redis wird nur bei aktivem Sofort-Upload genutzt; ist `x_accel_redirect` aktiviert, liefert nginx die Dateien direkt aus und deckt dabei auch Range und fortgesetzten Download ab.
+- **Speicherung und Betrieb**: Auf der Festplatte liegen immer nur drei Arten von Dateien – `*.part`-Chunks, der Fortsetzungsstand unter `_header/` und die fertigen `<md5>.<ext>`. Redis wird nur bei aktivem Sofort-Upload genutzt; ist `x_accel_redirect` aktiviert, liefert nginx die Dateien direkt aus und deckt dabei auch Range und fortgesetzten Download ab. Fertige Dateien können auch in S3-kompatiblem Objektspeicher landen (`storage.driver = s3`, siehe unten „Optionaler Objektspeicher (S3-kompatibel)“).
 
 # Designidee
 
@@ -99,6 +106,34 @@ Zwei Nebenpfade verdienen eine eigene Erläuterung:
 
 - **Sofort-Upload-Treffer**: Findet die Vorverarbeitung zu einem md5 bereits eine fertige Datei, gibt sie deren Pfad direkt zurück – kein einziger Chunk muss übertragen werden.
 - **Unterbrechung und Wiederaufnahme**: Wird dieselbe Nummer erneut gesendet, wird sie idempotent übersprungen; springt die Nummer oder ist ein Chunk abgeschnitten, kommt nur ein Fehler zurück, und `.part` samt Header werden **nicht aufgeräumt** – bei schwacher Verbindung kann der Client daher so lange erneut versuchen, bis der fehlende Chunk nachgereicht ist. Aufgeräumt wird nur in zwei Fällen: wenn die Prüfung des letzten Chunks fehlschlägt (die ganze Datei wird verworfen) und wenn nach dem Schließen der Seite ein Cron-Job `aetherupload:clean` nach mtime aufräumt.
+
+# Optionaler Objektspeicher (S3-kompatibel)
+
+Fertige Dateien landen standardmäßig auf der lokalen Festplatte (`storage.driver = local`, byteweise identisches Verhalten wie frühere Versionen). Umstellen lässt sich das auf S3-kompatiblen Objektspeicher – die drei Einstellungen `endpoint / region / path_style` decken alles ab, was das S3-Protokoll spricht: AWS und die Public Clouds ebenso wie selbst betriebenes MinIO / Ceph.
+
+```php
+// Konfigurationsdatei dieses Plugins (webman: config/plugin/erikwang2013/aetherupload-webman/app.php)
+'storage' => [
+    'driver' => 's3',                     // local (Standard) | s3
+    's3' => [
+        'endpoint'   => '',               // leer = AWS-Standard (aus region abgeleitet); selbst betrieben: eigener Endpunkt
+        'region'     => 'us-east-1',
+        'bucket'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'path_style' => true,             // für selbst betriebenes MinIO / Ceph usw. zwingend true; bei AWS und ähnlichen Public Clouds auch false möglich
+        'prefix'     => '',               // Präfix des Objekt-Keys (darf leer sein)
+        'multipart_threshold' => 104857600, // oberhalb dieser Größe: Multipart (Standard 100MB, Teile fest 64MB)
+        'payload_signing' => 'hash',       // Form des payload-Hash beim Signieren: hash (Standard, signiert den echten Inhalts-Hash) | unsigned (sendet UNSIGNED-PAYLOAD; nötig für Implementierungen wie Huawei Cloud OBS, die nur diese Form akzeptieren)
+    ],
+],
+```
+
+- **Keine neuen composer-Abhängigkeiten**: eingebauter minimaler S3-Client (SigV4-Standardsignatur + Multipart-Upload + 302-Presigned-URL). Nur der S3-Modus braucht `ext-curl` (weiche Abhängigkeit in composer `suggest`).
+- **Lesepfad**: `display` / `download` liefern einen 302-Redirect auf eine Presigned-URL – die `Content-Disposition`-Semantik und die Inline-Blacklist (z. B. svg zwangsweise als Anhang) bleiben unverändert erhalten.
+- **Lokale Semantik bleibt**: Chunk-Zwischenspeicherung, `aetherupload:groups` / `build` / `clean` arbeiten weiterhin auf lokalen Dateien; `x_accel_redirect` gilt nur für den local-Treiber und greift im s3-Modus nicht (der 302-Presign hat Vorrang).
+- **Anbieterabdeckung**: Das Design deckt AWS und 40+ S3-kompatible Anbieter ab; der Einzelvergleich je Anbieter (mit Quellen- und Konfidenzangaben) steht in [docs/S3-COMPATIBILITY.md](../S3-COMPATIBILITY.md). Hinweis: Azure Blob ist von Haus aus kein S3 (S3-Gateway nötig); OpenStack Swift erfordert aktiviertes s3api. Implementierungen, die nur die Form `UNSIGNED-PAYLOAD` akzeptieren – etwa Huawei Cloud OBS –, funktionieren, sobald `storage.s3.payload_signing` auf `unsigned` gesetzt ist.
+- **End-to-End-Verifikation**: `vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml` (erfordert einen lokalen S3-kompatiblen Server; fehlt er, werden die betroffenen Fälle ehrlich übersprungen, statt einen Erfolg vorzutäuschen).
 
 # Funktionen
 - [x] Fortschrittsbalken in Prozent  

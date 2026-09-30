@@ -258,6 +258,7 @@
         <path data-edge-from="routes" data-edge-to="resourcectrl" data-edge-label="展示 / 下载" data-edge-key="6" data-edge-id="routes-to-resource" data-composition-points="300,360;300,490;640,490" d="M 300 360 L 300 482 Q 300 490 308 490 L 640 490" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="resourcectrl" data-edge-to="storage" data-edge-label="读取成品" data-edge-key="7" data-edge-id="resource-to-disk" data-composition-points="790,490;790,465;955,465;955,440" d="M 790 490 L 790 473 Q 790 465 798 465 L 947 465 Q 955 465 955 457 L 955 440" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="commands" data-edge-to="storage" data-edge-label="清理 / 重建" data-edge-key="8" data-edge-id="commands-to-disk" data-composition-points="1090,410;1030,410" d="M 1090 410 L 1030 410" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="resourcectrl" data-edge-to="s3" data-edge-key="9" data-edge-id="resource-to-s3" data-composition-points="835,465;835,492;880,492" d="M 835 465 L 835 484 Q 835 492 843 492 L 880 492" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
         <!-- Components -->
         <g id="node-client" data-node-id="client" data-node-label="浏览器" tabindex="0" role="button" aria-label="Focus 浏览器, aetherupload-all.js, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="aetherupload-all.js" data-node-tag="算 md5 / 切片" data-node-context="Architecture component">
@@ -319,6 +320,19 @@
           <text data-detail-anchor="" x="955" y="408" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">本地磁盘</text>
         <text data-detail="context" x="955" y="424" class="t-muted" font-size="9" text-anchor="middle">root_dir 三段布局</text>
         <text data-detail="fine" x="955" y="432" class="t-database" font-size="7" text-anchor="middle">.part / _header / 成品</text>
+        </g>
+
+        <g id="node-s3" data-node-id="s3" data-node-label="对象存储（S3 兼容）" tabindex="0" role="button" aria-label="Focus 对象存储（S3 兼容）, 302 预签名读取 · PUT 写入, Architecture component" aria-pressed="false" data-node-kind="database" data-node-sublabel="302 预签名读取 · PUT 写入" data-node-tag="storage.driver = s3" data-node-context="Architecture component">
+          <title>对象存储（S3 兼容） · 302 预签名读取 · PUT 写入 · Architecture component · storage.driver = s3</title>
+          <rect x="880" y="472" width="150" height="60" rx="6" class="c-mask"/>
+          <rect x="880" y="472" width="150" height="60" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(886 478) scale(0.6875)">
+            <ellipse cx="8" cy="4" rx="5" ry="2"/>
+            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
+          </g>
+          <text data-detail-anchor="" x="955" y="500" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">对象存储（S3 兼容）</text>
+        <text data-detail="context" x="955" y="516" class="t-muted" font-size="9" text-anchor="middle">302 预签名读取 · PUT 写入</text>
+        <text data-detail="fine" x="955" y="524" class="t-database" font-size="7" text-anchor="middle">storage.driver = s3</text>
         </g>
 
         <g id="node-resourcectrl" data-node-id="resourcectrl" data-node-label="ResourceController" tabindex="0" role="button" aria-label="Focus ResourceController, display / download, webman 常驻进程 · 插件代码" aria-pressed="false" data-node-kind="backend" data-node-sublabel="display / download" data-node-context="webman 常驻进程 · 插件代码">

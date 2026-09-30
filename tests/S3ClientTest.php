@@ -423,4 +423,125 @@ class S3ClientTest extends TestCase
         $this->assertStringContainsString('response-content-disposition=' . rawurlencode($disposition), $withParams, 'responseParams 必须只编码一次后进入签名查询串');
         $this->assertMatchesRegularExpression('/X-Amz-Signature=[0-9a-f]{64}$/', $withParams);
     }
+
+    /**
+     * payload_signing='unsigned'：payload 哈希位改发 UNSIGNED-PAYLOAD（华为云 OBS 等只接受该形式的实现）。
+     * 三臂对照（默认 / 显式 hash / unsigned）压在同一秒内：日期相同、URL 与其余头逐项相同，
+     * 此时签名差异只可能来自 payload 哈希位本身——断言才真正指向 payload_signing，
+     * 而不是被 x-amz-date 之类的杂变量「凑巧凑出不同」。
+     */
+    public function testUnsignedPayloadModeReplacesPayloadHashAndChangesSignature(): void
+    {
+        $file = $this->writeFile('a.gif', 'GIF89a-unsigned');
+        $arms = [];
+
+        for ( $attempt = 0; $attempt < 10; $attempt++ ) {
+            $arms = [];
+
+            foreach ( ['default' => null, 'hash' => 'hash', 'unsigned' => 'unsigned'] as $label => $mode ) {
+                $transport = new FakeS3Transport();
+                $transport->respond(200);
+                $this->client($transport, $mode === null ? [] : ['payload_signing' => $mode])
+                    ->put('up/gd/sub/a.gif', $file, 'image/gif');
+                $arms[$label] = $transport->requests[0];
+            }
+
+            $dates = [];
+            foreach ( $arms as $request ) {
+                $dates[] = $this->header($request['headers'], 'x-amz-date');
+            }
+
+            if ( count(array_unique($dates)) === 1 ) {
+                break;
+            }
+        }
+
+        // 对照前提：三臂同一秒、同一 URL；不成立则下面的签名对比无意义，直接失败而不是给出假绿
+        $date = $this->header($arms['default']['headers'], 'x-amz-date');
+        $this->assertSame($date, $this->header($arms['hash']['headers'], 'x-amz-date'), '对照前提：三臂必须落在同一秒内');
+        $this->assertSame($date, $this->header($arms['unsigned']['headers'], 'x-amz-date'), '对照前提：三臂必须落在同一秒内');
+        $this->assertSame($arms['default']['url'], $arms['unsigned']['url'], '对照前提：除 payload 哈希位外请求一致');
+        $this->assertSame($arms['default']['method'], $arms['unsigned']['method']);
+
+        // 不带该键 = 现状（hash 模式）：与显式 'hash' 逐字节相同
+        $this->assertSame(hash_file('sha256', $file), $this->header($arms['default']['headers'], 'x-amz-content-sha256'), '默认必须仍是真实 payload 哈希');
+        $this->assertSame(
+            $this->header($arms['default']['headers'], 'x-amz-content-sha256'),
+            $this->header($arms['hash']['headers'], 'x-amz-content-sha256'),
+            "显式 payload_signing='hash' 必须与默认逐字节相同"
+        );
+        $this->assertSame(
+            $this->header($arms['default']['headers'], 'Authorization'),
+            $this->header($arms['hash']['headers'], 'Authorization'),
+            "显式 payload_signing='hash' 的签名必须与默认逐字节相同"
+        );
+
+        // unsigned：哈希位是令牌，且签名必须真的基于该令牌（而非仍按真实哈希签）
+        $this->assertSame('UNSIGNED-PAYLOAD', $this->header($arms['unsigned']['headers'], 'x-amz-content-sha256'));
+        $this->assertNotSame(
+            $this->header($arms['default']['headers'], 'Authorization'),
+            $this->header($arms['unsigned']['headers'], 'Authorization'),
+            'Authorization 必须签在 x-amz-content-sha256 的值上：两模式签名不得相同'
+        );
+        $this->assertStringNotContainsString(self::SECRET, (string)$this->header($arms['unsigned']['headers'], 'Authorization'));
+    }
+
+    /**
+     * unsigned 模式必须覆盖 multipart 的每个请求（含 create/complete：OBS 限制对 XML body 同样适用），
+     * 且分片几何（offset/size）不受模式影响。
+     */
+    public function testUnsignedPayloadModeAppliesToEveryMultipartRequest(): void
+    {
+        $partSize = 67108864;
+
+        $file = $this->base . '/large-unsigned.bin';
+        $handle = fopen($file, 'wb');
+        for ( $i = 0; $i < 64; $i++ ) {
+            fwrite($handle, str_repeat(pack('N', $i), 262144));
+        }
+        fwrite($handle, 'TAIL-16-BYTES!!!');
+        fclose($handle);
+        clearstatcache(true, $file);
+
+        $this->assertSame($partSize + 16, filesize($file), '前置条件：文件 = 64MiB + 16B，正好两片');
+
+        $transport = new FakeS3Transport();
+        $transport->respond(200, [], '<UploadId>u-1</UploadId>');
+        $transport->respond(200, ['etag' => '"e1"']);
+        $transport->respond(200, ['etag' => '"e2"']);
+        $transport->respond(200, [], '<CompleteMultipartUploadResult/>');
+
+        $this->client($transport, ['payload_signing' => 'unsigned'])
+            ->multipart('gd/sub/big.bin', $file, 'application/octet-stream');
+
+        $this->assertSame(['POST', 'PUT', 'PUT', 'POST'], $transport->methods());
+        $this->assertSame(0, $transport->remaining());
+
+        foreach ( $transport->requests as $index => $request ) {
+            $this->assertSame(
+                'UNSIGNED-PAYLOAD',
+                $this->header($request['headers'], 'x-amz-content-sha256'),
+                'unsigned 模式下第 ' . ($index + 1) . ' 个请求（' . $request['method'] . '）必须发 UNSIGNED-PAYLOAD'
+            );
+        }
+
+        $part1 = $transport->requests[1];
+        $part2 = $transport->requests[2];
+        $this->assertSame(0, $part1['bodyOffset']);
+        $this->assertSame($partSize, $part1['bodySize']);
+        $this->assertSame($partSize, $part2['bodyOffset']);
+        $this->assertSame(16, $part2['bodySize']);
+        $this->assertNotSame($this->sliceSha256($file, 0, $partSize), $this->header($part1['headers'], 'x-amz-content-sha256'), 'unsigned 模式不得再按切片现算哈希');
+    }
+
+    public function testIllegalPayloadSigningValueIsRejectedAtConstruction(): void
+    {
+        $error = $this->capture(function () {
+            new S3Client($this->config(['payload_signing' => 'md5']));
+        });
+
+        $this->assertNotNull($error, "payload_signing='md5' 必须构造失败（只允许 hash|unsigned）");
+        $this->assertStringContainsString('storage.s3.payload_signing', $error->getMessage(), '错误消息必须点名配置键');
+        $this->assertStringNotContainsString(self::SECRET, $error->getMessage(), '错误消息不得回显凭据');
+    }
 }

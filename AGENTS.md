@@ -1,6 +1,6 @@
 # aetherupload-webman
 
-> 大文件分块上传插件：断线续传 / 秒传 / 完整性校验，框架无关内核 + 九个宿主适配器
+> 大文件分块上传插件：断线续传 / 秒传 / 完整性校验，可选 S3 兼容对象存储驱动，框架无关内核 + 九个宿主适配器
 
 ## Project Overview
 
@@ -10,7 +10,8 @@ md5 命名 —— 于是上传、断线续传、秒传、去重、校验共用�
 
 **Tech Stack**: PHP 8.0–8.4（webman + Workerman 常驻进程模型为原生场景）· PHPUnit 9.6 / 10.5 · Redis（仅秒传，可选）
 **Architecture**: 端口-适配器（ports & adapters）。内核 `src/` 只经静态门面 `Runtime` 与 `src/Contract/` 的
-11 个接口访问宿主；九个适配器在 `src/Adapter/{Webman,Native,Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii,Yii3}/`。
+11 个接口访问宿主；九个适配器在 `src/Adapter/{Webman,Native,Laravel,ThinkPhp,Symfony,Slim,Hyperf,Yii,Yii3}/`；
+存储驱动在 `src/Storage/`（`storage.driver = local | s3`，s3 为内置零新增依赖的 S3 兼容客户端）。
 可变状态一律进 `RequestContext`（每请求/每协程），适配器与 `Runtime` 只持有不可变绑定。
 
 ## Quick Start
@@ -24,6 +25,7 @@ composer install --no-interaction
 ```bash
 vendor/bin/phpunit --no-coverage                              # 单元套件（替身，不加载任何框架）
 vendor/bin/phpunit -c tests/Integration/webman/phpunit.xml    # webman 端到端（起真服务 + curl）
+vendor/bin/phpunit -c tests/Integration/webman/phpunit-s3.xml # webman S3 模式端到端（真 S3 兼容服务端，缺则 skip）
 bash tests/Integration/laravel/ci.sh                          # 其余八个同构（native/laravel/thinkphp/symfony/slim/hyperf/yii/yii3）
 ```
 
