@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * webman 真实端到端（local 模式）：真骨架（composer create-project workerman/webman）+ 真 HTTP（curl）+ 真文件系统。
  *
- * 这一层才是「webman 可用」的证据；tests/ 下的 217 个用例用的是替身，只覆盖内核逻辑。
+ * 这一层才是「webman 可用」的证据；tests/ 下的单元用例用的是替身，只覆盖内核逻辑。
  * 应用准备与启停见 bootstrap.php / App.php，请求发送见 WebmanHttp，断言清单见 FlowAssertions。
  * S3 驱动那一套在 S3FlowTest.php（同目录，入口 phpunit-s3.xml）。
  */

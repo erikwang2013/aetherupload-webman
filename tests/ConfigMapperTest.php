@@ -33,11 +33,7 @@ class ConfigMapperTest extends TestCase
 
     private function resetSingleton(): void
     {
-        $ref = new \ReflectionClass(ConfigMapper::class);
-        // setAccessible() required on PHP 8.0 for non-public properties (no-op on 8.1+)
-        $property = $ref->getProperty('_instance');
-        $property->setAccessible(true);
-        $property->setValue(null, null);
+        TestState::resetConfigMapper();
     }
 
     public function testGetReadsDefaultConfigValue(): void
@@ -98,7 +94,9 @@ class ConfigMapperTest extends TestCase
     {
         $ref = new \ReflectionClass(ConfigMapper::class);
         $property = $ref->getProperty('_instance');
-        $property->setAccessible(true);
+        if ( PHP_VERSION_ID < 80100 ) {
+            $property->setAccessible(true);
+        }
         $before = $property->getValue();
 
         ConfigMapper::set('group_dir', 'via-set');

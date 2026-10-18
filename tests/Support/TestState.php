@@ -114,9 +114,11 @@ final class TestState
     public static function resetConfigMapper(): void
     {
         $ref = new \ReflectionClass(\AetherUpload\ConfigMapper::class);
-        // setAccessible() required on PHP 8.0 for non-public properties (no-op on 8.1+)
+        // setAccessible() required on PHP 8.0 for non-public properties; no-op (and deprecated on 8.5) on 8.1+
         $property = $ref->getProperty('_instance');
-        $property->setAccessible(true);
+        if ( PHP_VERSION_ID < 80100 ) {
+            $property->setAccessible(true);
+        }
         $property->setValue(null, null);
     }
 

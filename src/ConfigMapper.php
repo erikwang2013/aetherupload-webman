@@ -110,7 +110,7 @@ class ConfigMapper
 
         $config = Runtime::config();
 
-        if ( ! in_array($group, array_keys((array)$config->get('groups'))) ) {
+        if ( ! array_key_exists($group, (array)$config->get('groups')) ) {
             throw new \Exception(Runtime::trans('invalid_operation'));
         }
 
