@@ -1,6 +1,6 @@
 # AetherUpload-Webman  
 
-<img src="docs/js/aetherupload-pet.svg" width="120" alt="以太兽 — AetherUpload 项目宠物">
+![以太兽 — AetherUpload 项目宠物](docs/js/aetherupload-pet.svg)
 
 [中文](README.md) · [English](docs/i18n/README.en.md) · [한국어](docs/i18n/README.ko.md) · [Русский](docs/i18n/README.ru.md) · [Deutsch](docs/i18n/README.de.md) · [Français](docs/i18n/README.fr.md) · [Español](docs/i18n/README.es.md) · [Português](docs/i18n/README.pt.md) · [हिन्दी](docs/i18n/README.hi.md) · [العربية](docs/i18n/README.ar.md) · [বাংলা](docs/i18n/README.bn.md) · [Bahasa Indonesia](docs/i18n/README.id.md) · [日本語](docs/i18n/README.ja.md)
 
@@ -84,7 +84,7 @@ aetherupload-webman/
 
 # 设计架构
 
-<img src="docs/aetherupload-architecture.svg" alt="AetherUpload-Webman 架构图">
+![AetherUpload-Webman 架构图](docs/aetherupload-architecture.svg)
 
 - **客户端**：引入一个 `aetherupload-all.js` 即可（内含 zepto 与 spark-md5），它负责算 md5、切片、进度条与断线自动重试。
 - **服务端**：`UploadController` 只有两个入口（预处理、分块写入）；`PartialResource` 管路径、追加与重命名，`Header` 只记 chunkIndex；配置经 `ConfigMapper` 按请求快照，避免常驻进程下并发请求互相串组。
@@ -92,13 +92,13 @@ aetherupload-webman/
 
 # 设计思路
 
-<img src="docs/aetherupload-design.svg" alt="AetherUpload-Webman 设计思路">
+![AetherUpload-Webman 设计思路](docs/aetherupload-design.svg)
 
 图中三条决策之外，还有一条独立的选择：**秒传索引做成可选依赖 + 每条记录独立 TTL**。不装 Redis 的站点照样能上传（只是秒传失效）；装了 Redis 的站点，每条记录用 `SETEX` 各自过期——既不共享过期时间，也不会因为持续上传而无限膨胀；升级后旧 hash 记录仍可回退读取。一致性交给 `aetherupload:build`（每日重建）与 `aetherupload:clean`（按 mtime 回收临时文件）。
 
 # 上传生命周期
 
-<img src="docs/aetherupload-lifecycle.svg" alt="AetherUpload-Webman 上传生命周期">
+![AetherUpload-Webman 上传生命周期](docs/aetherupload-lifecycle.svg)
 
 主路径只有四步：**预处理 → 分块（循环）→ 最后一块校验 → 落盘**。预处理建空的 `.part` 并把 `chunkIndex=0` 写进 header；每个分块的顺序固定为「校验 → 追加 → 回写 chunkIndex」；只有最后一块才会校验大小与 MIME、重算整份 md5、改名成 `<md5>.<ext>` 并写秒传索引。
 
@@ -490,48 +490,30 @@ location /internal-aetherupload/ {
 `mount --bind /dev/shm/tmp /tmp`  
 
 # 兼容性
-<table>
-  <th></th>
-  <th>IE</th>
-  <th>Edge</th>
-  <th>Firefox</th>
-  <th>Chrome</th>
-  <th>Safari</th>
-  <tr>
-  <td>上传</td>
-  <td>10+</td>
-  <td>12+</td>
-  <td>3.6+</td>
-  <td>6+</td>
-  <td>5.1+</td>
-  </tr>
-  <tr>
-  <td>秒传</td>
-  <td>10+</td>
-  <td>12+</td>
-  <td>3.6+</td>
-  <td>6+</td>
-  <td>6+</td>
-  </tr>
-</table>
+
+| 功能 | IE | Edge | Firefox | Chrome | Safari |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 上传 | 10+ | 12+ | 3.6+ | 6+ | 5.1+ |
+| 秒传 | 10+ | 12+ | 3.6+ | 6+ | 6+ |
 
 # 安全性
 AetherUpload在上传前使用白名单+黑名单的形式进行文件后缀名过滤，上传后再检查文件的Mime-Type类型。白名单直接限制了保存文件扩展名，黑名单默认屏蔽了常见的可执行文件扩展名，来阻止上传恶意文件，安全起见白名单一栏不应留空。  
 
 虽然做了诸多安全工作，但恶意文件上传是防不胜防的，建议正确设置上传目录权限，确保相关程序对资源文件没有执行权限。
 
-<!-- pet-expressions:start -->
 ## 项目宠物表情形态 · 以太兽
 
-<table align="center">
-<tr><td align="center"><img src="docs/pet-expressions/smile.svg" width="88" alt="笑"><br><b>笑</b><br><code>:emoji-smile:</code></td><td align="center"><img src="docs/pet-expressions/joy.svg" width="88" alt="欢乐"><br><b>欢乐</b><br><code>:emoji-joy:</code></td><td align="center"><img src="docs/pet-expressions/cry.svg" width="88" alt="哭"><br><b>哭</b><br><code>:emoji-cry:</code></td><td align="center"><img src="docs/pet-expressions/depressed.svg" width="88" alt="沮丧"><br><b>沮丧</b><br><code>:emoji-depressed:</code></td><td align="center"><img src="docs/pet-expressions/terrified.svg" width="88" alt="惊恐"><br><b>惊恐</b><br><code>:emoji-terrified:</code></td><td align="center"><img src="docs/pet-expressions/angry.svg" width="88" alt="愤怒"><br><b>愤怒</b><br><code>:emoji-angry:</code></td></tr>
-<tr><td align="center"><img src="docs/pet-expressions/coquettish.svg" width="88" alt="撒娇"><br><b>撒娇</b><br><code>:emoji-coquettish:</code></td><td align="center"><img src="docs/pet-expressions/cute.svg" width="88" alt="卖萌"><br><b>卖萌</b><br><code>:emoji-cute:</code></td><td align="center"><img src="docs/pet-expressions/pleasing.svg" width="88" alt="讨好"><br><b>讨好</b><br><code>:emoji-pleasing:</code></td><td align="center"><img src="docs/pet-expressions/knocking.svg" width="88" alt="敲打"><br><b>敲打</b><br><code>:emoji-knocking:</code></td><td align="center"><img src="docs/pet-expressions/facepalm.svg" width="88" alt="捂脸"><br><b>捂脸</b><br><code>:emoji-facepalm:</code></td><td align="center"><img src="docs/pet-expressions/tongue.svg" width="88" alt="吐舌头"><br><b>吐舌头</b><br><code>:emoji-tongue:</code></td></tr>
-</table>
+| 表情 | 表情 |
+|:---:|:---:|
+| ![笑](docs/pet-expressions/smile.svg) **笑** `:emoji-smile:` | ![欢乐](docs/pet-expressions/joy.svg) **欢乐** `:emoji-joy:` |
+| ![哭](docs/pet-expressions/cry.svg) **哭** `:emoji-cry:` | ![沮丧](docs/pet-expressions/depressed.svg) **沮丧** `:emoji-depressed:` |
+| ![惊恐](docs/pet-expressions/terrified.svg) **惊恐** `:emoji-terrified:` | ![愤怒](docs/pet-expressions/angry.svg) **愤怒** `:emoji-angry:` |
+| ![撒娇](docs/pet-expressions/coquettish.svg) **撒娇** `:emoji-coquettish:` | ![卖萌](docs/pet-expressions/cute.svg) **卖萌** `:emoji-cute:` |
+| ![讨好](docs/pet-expressions/pleasing.svg) **讨好** `:emoji-pleasing:` | ![敲打](docs/pet-expressions/knocking.svg) **敲打** `:emoji-knocking:` |
+| ![捂脸](docs/pet-expressions/facepalm.svg) **捂脸** `:emoji-facepalm:` | ![吐舌头](docs/pet-expressions/tongue.svg) **吐舌头** `:emoji-tongue:` |
 
 > 12 种彩色动态形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头。每个 SVG 自带表情、情绪特效与整体动效，并遵循 `prefers-reduced-motion`。
-<!-- pet-expressions:end -->
 
-<!-- assets-license:start -->
 ## 视觉资产授权 / Visual Assets License
 
 本项目的项目宠物、图片、图标、表情（包括 `docs/pet-expressions/` 等目录下的
@@ -540,5 +522,4 @@ SVG / PNG）**不是开源资产**，版权归作者所有。未经书面许可�
 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。
 
 > 代码部分仍遵循仓库原有 `LICENSE`；第三方素材（如明确标注的 Go Gopher 等）仍遵循其原许可证。
-<!-- assets-license:end -->
 
