@@ -48,6 +48,7 @@ aetherupload-webman/
 │   ├── Responser.php               JSON 响应封装
 │   ├── SimpleValidateTrait.php     极简必填校验
 │   ├── ExamplePageTrait.php        示例页
+│   ├── Pet.php                     项目宠物形态与上传状态映射（示例页使用）
 │   └── helpers.php                 模板助手：aetherupload_display_link / aetherupload_download_link
 ├── commands/                     webman 的控制台壳（安装时复制到 app/command，逻辑在 src/Console）
 │   ├── AetherUploadListGroups.php        php webman aetherupload:groups   列出分组并创建对应目录
@@ -67,7 +68,8 @@ aetherupload-webman/
 │   └── js/                            前端资源（发布到 <文档根>/vendor/aetherupload/js）
 │       ├── aetherupload-all.js        打包版：核心 + zepto + spark-md5
 │       ├── aetherupload-core.js       核心逻辑：算 hash、切片、上传、进度、断线重试
-│       └── aetherupload-pet.svg       项目宠物「以太兽」，同时用作示例页图标与站点图标
+│       ├── aetherupload-pet.svg       项目宠物「以太兽」，同时用作示例页图标与站点图标
+│       └── pet-expressions/           12 种宠物形态，示例页按上传状态切换
 ├── translations/{zh,en}/         多语言（发布到宿主的 translations 路径下 aetherupload/）
 ├── views/example.blade.php       示例页源码，接入时可直接参考
 ├── tests/
@@ -77,7 +79,7 @@ aetherupload-webman/
 └── composer.json
 ```
 
-> `src/` 根目录下那 15 个文件（控制器、分块、断点、秒传索引、路径编解码、错误响应…）是与框架无关的上传内核：它们不引用任何宿主命名空间，配置 / 翻译 / 请求 / 响应 / Redis / 事件全部经 `Runtime` 取端口。
+> `src/` 根目录下的文件（控制器、分块、断点、秒传索引、路径编解码、错误响应、示例页与宠物形态映射…）都与框架无关：它们不引用任何宿主命名空间，配置 / 翻译 / 请求 / 响应 / Redis / 事件全部经 `Runtime` 取端口。
 > 唯一的例外是 `Install.php` —— `composer require` 触发的安装脚本跑在宿主应用起来之前，`Runtime` 还没被绑上，它在那种情况下会兜底自绑 webman 适配器并回落到包内的 `config/app.php`。
 
 > 安装前这些都是包内文件；`composer require` 之后由 `Install.php` 按上表标注的映射，把配置、命令、前端脚本与语言文件分发到宿主应用的对应位置。
@@ -513,6 +515,8 @@ AetherUpload在上传前使用白名单+黑名单的形式进行文件后缀名�
 | ![捂脸](docs/js/pet-expressions/facepalm.svg) **捂脸** `:emoji-facepalm:` | ![吐舌头](docs/js/pet-expressions/tongue.svg) **吐舌头** `:emoji-tongue:` |
 
 > 12 种彩色动态形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头。每个 SVG 自带表情、情绪特效与整体动效，并遵循 `prefers-reduced-motion`。
+
+示例页把形态接入为上传状态指示器：待机、计算哈希、上传中、重试、秒传成功、上传成功、上传失败会切换对应形态；点击宠物可循环预览全部 12 种。资源随 `docs/js` 一起发布到 `<文档根>/vendor/aetherupload/js/pet-expressions/`。
 
 ## 视觉资产授权 / Visual Assets License
 
