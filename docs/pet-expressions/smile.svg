@@ -33,17 +33,8 @@
 }
 </style><g class="ex-motion ex-smile"><g class="ex-base"><defs>
     
-    <linearGradient id="auBg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#141d33"/>
-      <stop offset="1" stop-color="#0b1120"/>
-    </linearGradient>
 
     
-    <radialGradient id="auGlow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#4fd1ff" stop-opacity="0.26"/>
-      <stop offset="0.6" stop-color="#7c6cff" stop-opacity="0.10"/>
-      <stop offset="1" stop-color="#7c6cff" stop-opacity="0"/>
-    </radialGradient>
 
     
     <linearGradient id="auBody" gradientUnits="userSpaceOnUse" x1="120" y1="70" x2="120" y2="206">
@@ -64,8 +55,6 @@
     </linearGradient>
   </defs>
 
-  <rect x="8" y="8" width="224" height="224" rx="46" fill="url(#auBg)"/>
-  <ellipse cx="120" cy="142" rx="96" ry="90" fill="url(#auGlow)"/>
 
   
   <g stroke="#8fe6ff" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.88">
