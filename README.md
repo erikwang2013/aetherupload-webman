@@ -505,18 +505,18 @@ AetherUpload在上传前使用白名单+黑名单的形式进行文件后缀名�
 
 | 表情 | 表情 |
 |:---:|:---:|
-| ![笑](docs/pet-expressions/smile.svg) **笑** `:emoji-smile:` | ![欢乐](docs/pet-expressions/joy.svg) **欢乐** `:emoji-joy:` |
-| ![哭](docs/pet-expressions/cry.svg) **哭** `:emoji-cry:` | ![沮丧](docs/pet-expressions/depressed.svg) **沮丧** `:emoji-depressed:` |
-| ![惊恐](docs/pet-expressions/terrified.svg) **惊恐** `:emoji-terrified:` | ![愤怒](docs/pet-expressions/angry.svg) **愤怒** `:emoji-angry:` |
-| ![撒娇](docs/pet-expressions/coquettish.svg) **撒娇** `:emoji-coquettish:` | ![卖萌](docs/pet-expressions/cute.svg) **卖萌** `:emoji-cute:` |
-| ![讨好](docs/pet-expressions/pleasing.svg) **讨好** `:emoji-pleasing:` | ![敲打](docs/pet-expressions/knocking.svg) **敲打** `:emoji-knocking:` |
-| ![捂脸](docs/pet-expressions/facepalm.svg) **捂脸** `:emoji-facepalm:` | ![吐舌头](docs/pet-expressions/tongue.svg) **吐舌头** `:emoji-tongue:` |
+| ![笑](docs/js/pet-expressions/smile.svg) **笑** `:emoji-smile:` | ![欢乐](docs/js/pet-expressions/joy.svg) **欢乐** `:emoji-joy:` |
+| ![哭](docs/js/pet-expressions/cry.svg) **哭** `:emoji-cry:` | ![沮丧](docs/js/pet-expressions/depressed.svg) **沮丧** `:emoji-depressed:` |
+| ![惊恐](docs/js/pet-expressions/terrified.svg) **惊恐** `:emoji-terrified:` | ![愤怒](docs/js/pet-expressions/angry.svg) **愤怒** `:emoji-angry:` |
+| ![撒娇](docs/js/pet-expressions/coquettish.svg) **撒娇** `:emoji-coquettish:` | ![卖萌](docs/js/pet-expressions/cute.svg) **卖萌** `:emoji-cute:` |
+| ![讨好](docs/js/pet-expressions/pleasing.svg) **讨好** `:emoji-pleasing:` | ![敲打](docs/js/pet-expressions/knocking.svg) **敲打** `:emoji-knocking:` |
+| ![捂脸](docs/js/pet-expressions/facepalm.svg) **捂脸** `:emoji-facepalm:` | ![吐舌头](docs/js/pet-expressions/tongue.svg) **吐舌头** `:emoji-tongue:` |
 
 > 12 种彩色动态形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头。每个 SVG 自带表情、情绪特效与整体动效，并遵循 `prefers-reduced-motion`。
 
 ## 视觉资产授权 / Visual Assets License
 
-本项目的项目宠物、图片、图标、表情（包括 `docs/pet-expressions/` 等目录下的
+本项目的项目宠物、图片、图标、表情（包括 `docs/js/pet-expressions/` 等目录下的
 SVG / PNG）**不是开源资产**，版权归作者所有。未经书面许可不得复制、修改、再分发或
 用于商业用途；商业使用需取得商业授权，联系 **erik@erik.xyz**。详见
 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。
