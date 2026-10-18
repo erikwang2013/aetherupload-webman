@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640"
+     role="img" aria-labelledby="spTitle spDesc">
+  <title id="spTitle">AetherUpload-Webman — 大文件分块上传</title>
+  <desc id="spDesc">以太兽、项目名称与核心特性：分块上传、断点续传、秒传、去重、S3 兼容、PHP 8.0–8.4。</desc>
+
+  <defs>
+    <linearGradient id="spBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#141d33"/>
+      <stop offset="1" stop-color="#0b1120"/>
+    </linearGradient>
+
+    <radialGradient id="spGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#4fd1ff" stop-opacity="0.20"/>
+      <stop offset="0.55" stop-color="#7c6cff" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#7c6cff" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="spAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22e0b0"/>
+      <stop offset="0.5" stop-color="#35d0ff"/>
+      <stop offset="1" stop-color="#8f7cff"/>
+    </linearGradient>
+
+    <radialGradient id="spShadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.28"/>
+      <stop offset="0.6" stop-color="#000000" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 与 docs/js/aetherupload-pet.svg 相同的体色与分块渐变 -->
+    <linearGradient id="auBody" gradientUnits="userSpaceOnUse" x1="120" y1="70" x2="120" y2="206">
+      <stop offset="0" stop-color="#86e6ff"/>
+      <stop offset="0.45" stop-color="#62a7ff"/>
+      <stop offset="1" stop-color="#8f7cff"/>
+    </linearGradient>
+
+    <linearGradient id="auCubeTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d7f6ff"/>
+      <stop offset="1" stop-color="#9fe4ff"/>
+    </linearGradient>
+
+    <linearGradient id="auBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22e0b0"/>
+      <stop offset="1" stop-color="#35d0ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 深空底色与以太辉光 -->
+  <rect width="1280" height="640" fill="url(#spBg)"/>
+  <ellipse cx="994" cy="346" rx="340" ry="310" fill="url(#spGlow)"/>
+
+  <!-- 上传雷达环 -->
+  <g fill="none" stroke="#7fd8ff" stroke-linecap="round">
+    <circle cx="994" cy="346" r="214" stroke-opacity="0.06"/>
+    <circle cx="994" cy="346" r="274" stroke-opacity="0.05"/>
+    <circle cx="994" cy="346" r="334" stroke-opacity="0.035"/>
+    <circle cx="994" cy="346" r="244" stroke-opacity="0.08" stroke-dasharray="2 12"/>
+  </g>
+
+  <!-- 装饰粒子 -->
+  <g fill="#7fd8ff">
+    <circle cx="1160" cy="170" r="3" opacity="0.45"/>
+    <circle cx="1190" cy="222" r="2" opacity="0.30"/>
+    <circle cx="824" cy="502" r="2.5" opacity="0.35"/>
+  </g>
+
+  <!-- 左侧文案 -->
+  <rect x="120" y="96" width="64" height="6" rx="3" fill="url(#spAccent)"/>
+
+  <text x="120" y="140" font-family="Noto Sans CJK SC, Source Han Sans SC, sans-serif"
+        font-size="20" font-weight="500" letter-spacing="4.5" fill="#7fd8ff">AETHERUPLOAD · WEBMAN</text>
+
+  <text x="120" y="232" font-family="Noto Sans Display, Noto Sans CJK SC, sans-serif"
+        font-size="60" font-weight="700" letter-spacing="-1.5" fill="#f4f8ff">AetherUpload<tspan fill="#7fd8ff">-Webman</tspan></text>
+
+  <text x="120" y="290" font-family="Noto Sans CJK SC, Source Han Sans SC, sans-serif"
+        font-size="27" font-weight="400" fill="#b9c7e6">大文件分块上传 · 断点续传 · 秒传 · 去重</text>
+
+  <g font-family="Noto Sans CJK SC, Source Han Sans SC, sans-serif" font-size="20" fill="#8fa3c8">
+    <text x="120" y="340">浏览器切片，服务端逐块追加，落盘时按内容 md5 命名。</text>
+    <text x="120" y="374">上传、续传、秒传、去重与完整性校验共用一套机制。</text>
+  </g>
+
+  <!-- 特性标签 -->
+  <g font-family="Noto Sans CJK SC, Source Han Sans SC, sans-serif" font-size="18" fill="#bfe9ff">
+    <g>
+      <rect x="120" y="418" width="116" height="44" rx="22" fill="#7fd8ff" fill-opacity="0.08"
+            stroke="#7fd8ff" stroke-opacity="0.28"/>
+      <text x="178" y="446" text-anchor="middle">分块上传</text>
+    </g>
+    <g>
+      <rect x="248" y="418" width="116" height="44" rx="22" fill="#7fd8ff" fill-opacity="0.08"
+            stroke="#7fd8ff" stroke-opacity="0.28"/>
+      <text x="306" y="446" text-anchor="middle">断点续传</text>
+    </g>
+    <g>
+      <rect x="376" y="418" width="134" height="44" rx="22" fill="#7fd8ff" fill-opacity="0.08"
+            stroke="#7fd8ff" stroke-opacity="0.28"/>
+      <text x="443" y="446" text-anchor="middle">秒传 / 去重</text>
+    </g>
+    <g>
+      <rect x="522" y="418" width="110" height="44" rx="22" fill="#7fd8ff" fill-opacity="0.08"
+            stroke="#7fd8ff" stroke-opacity="0.28"/>
+      <text x="577" y="446" text-anchor="middle">S3 兼容</text>
+    </g>
+    <g>
+      <rect x="644" y="418" width="148" height="44" rx="22" fill="#7fd8ff" fill-opacity="0.08"
+            stroke="#7fd8ff" stroke-opacity="0.28"/>
+      <text x="718" y="446" text-anchor="middle">PHP 8.0–8.4</text>
+    </g>
+  </g>
+
+  <!-- 仓库地址 -->
+  <circle cx="126" cy="560" r="4" fill="#35d0ff"/>
+  <text x="140" y="566" font-family="Noto Sans Mono, DejaVu Sans Mono, monospace"
+        font-size="18" fill="#8296bb">github.com/erikwang2013/aetherupload-webman</text>
+
+  <!-- 以太兽（内联自 docs/js/aetherupload-pet.svg，去掉背景与辉光） -->
+  <ellipse cx="994" cy="486" rx="170" ry="30" fill="url(#spShadow)"/>
+  <g transform="translate(790 108) scale(1.7)">
+    <g stroke="#8fe6ff" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.88">
+      <path d="M120 70 V48"/>
+      <path d="M113 58 L120 49 L127 58" stroke-linejoin="round"/>
+    </g>
+
+    <g fill="url(#auBody)">
+      <circle cx="120" cy="152" r="54"/>
+      <circle cx="80" cy="140" r="33"/>
+      <circle cx="160" cy="140" r="33"/>
+      <circle cx="120" cy="106" r="37"/>
+    </g>
+
+    <g fill="#0d1b34">
+      <ellipse cx="100" cy="136" rx="7.5" ry="9.5"/>
+      <ellipse cx="140" cy="136" rx="7.5" ry="9.5"/>
+    </g>
+    <g fill="#ffffff" opacity="0.92">
+      <circle cx="97" cy="131.5" r="2.6"/>
+      <circle cx="137" cy="131.5" r="2.6"/>
+    </g>
+    <path d="M111 153 q 9 9 18 0" fill="none" stroke="#0d1b34" stroke-width="3.4" stroke-linecap="round"/>
+
+    <rect x="90" y="172" width="60" height="11" rx="5.5" fill="#0d1b34" opacity="0.22"/>
+    <rect x="90" y="172" width="38" height="11" rx="5.5" fill="url(#auBar)"/>
+
+    <path d="M172 90 q -9 5 -14 9" fill="none" stroke="#7fd8ff" stroke-width="3"
+          stroke-linecap="round" stroke-dasharray="1 8" opacity="0.75"/>
+    <g>
+      <path d="M186 64 L199 71 L186 78 L173 71 Z" fill="url(#auCubeTop)"/>
+      <path d="M173 71 L186 78 L186 96 L173 89 Z" fill="#63b5ff"/>
+      <path d="M186 78 L199 71 L199 89 L186 96 Z" fill="#8a86ff"/>
+    </g>
+  </g>
+</svg>
