@@ -12,7 +12,8 @@
 
 <div class="container">
     <div class="page-header">
-        <h1><img src="/vendor/aetherupload/js/aetherupload-pet.svg" width="52" alt="" style="vertical-align:-12px;margin-right:10px">This is an example page.</h1>
+        <h1><img id="aetherupload-pet" src="/vendor/aetherupload/js/pet-expressions/smile.svg" width="72" height="72" alt="以太兽" title="点击切换表情" style="vertical-align:-20px;margin-right:10px;cursor:pointer;">This is an example page.</h1>
+        <div id="aetherupload-pet-caption" aria-live="polite" style="font-size:12px;color:#888;margin:-8px 0 8px 0;">以太兽 · 待机（点击切换表情）</div>
         <i>view the source code in <a href="/aetherupload/example_source" target="_blank">vendor/erikwang2013/aetherupload-webman/views/example.blade.php</a></i>
     </div>
 
@@ -69,6 +70,55 @@
         );
     }
 
+</script>
+
+<script>
+    // 示例页宠物：上传状态 => 表情形态；点击宠物可循环预览全部 12 种形态。
+    (function () {
+        var pet = document.getElementById('aetherupload-pet');
+        var caption = document.getElementById('aetherupload-pet-caption');
+        if (!pet) {
+            return;
+        }
+
+        var base = '/vendor/aetherupload/js/pet-expressions';
+        var stateExpressions = {"idle":"smile","begin":"cute","hashing":"pleasing","uploading":"knocking","retry":"terrified","instant":"joy","success":"joy","error":"cry"};
+        var stateLabels = {"idle":"待机","begin":"准备中","hashing":"计算哈希","uploading":"上传中","retry":"重试中","instant":"秒传成功","success":"上传成功","error":"上传失败"};
+        var expressionLabels = {"smile":"笑","joy":"欢乐","cry":"哭","depressed":"沮丧","terrified":"惊恐","angry":"愤怒","coquettish":"撒娇","cute":"卖萌","pleasing":"讨好","knocking":"敲打","facepalm":"捂脸","tongue":"吐舌头"};
+        var names = ["smile","joy","cry","depressed","terrified","angry","coquettish","cute","pleasing","knocking","facepalm","tongue"];
+        var current = 'smile';
+
+        function setPet(expression, label) {
+            if (!expression) {
+                return;
+            }
+
+            current = expression;
+            pet.src = base + '/' + expression + '.svg';
+
+            if (caption) {
+                caption.textContent = '以太兽 · ' + (label || expressionLabels[expression] || expression);
+            }
+        }
+
+        document.addEventListener('aetherupload:state', function (event) {
+            if (!event.detail || !event.detail.state) {
+                return;
+            }
+
+            setPet(
+                stateExpressions[event.detail.state] || 'smile',
+                stateLabels[event.detail.state] || ''
+            );
+        });
+
+        pet.addEventListener('click', function () {
+            var index = names.indexOf(current);
+            var next = names[(index + 1) % names.length];
+
+            setPet(next, expressionLabels[next]);
+        });
+    })();
 </script>
 </body>
 </html>

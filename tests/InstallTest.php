@@ -31,6 +31,7 @@ class InstallTest extends TestCase
 
         $this->assertDirectoryExists($base . '/public/vendor/aetherupload/js');
         $this->assertFileExists($base . '/public/vendor/aetherupload/js/aetherupload-all.js');
+        $this->assertFileExists($base . '/public/vendor/aetherupload/js/pet-expressions/smile.svg');
 
         $this->assertDirectoryExists($base . '/app/command');
         $this->assertFileExists($base . '/app/command/AetherUploadCleanUpDirectory.php');

@@ -63,6 +63,8 @@ var AetherUpload = {
 
             this.outputDom.text(this.messages.error_unsupported_browser);
 
+            this.emitState('error', this.messages.error_unsupported_browser);
+
             return;
 
         }
@@ -70,6 +72,8 @@ var AetherUpload = {
         if (this.resourceSize === 0) {
 
             this.outputDom.text(this.messages.error_invalid_resource_size);
+
+            this.emitState('error', this.messages.error_invalid_resource_size);
 
             return;
 
@@ -79,11 +83,15 @@ var AetherUpload = {
 
             this.outputDom.text(this.messages.error_invalid_resource_type);
 
+            this.emitState('error', this.messages.error_invalid_resource_type);
+
             return;
 
         }
 
         this.outputDom.text(this.messages.status_upload_begin);
+
+        this.emitState('begin');
 
         if (!('FileReader' in window) || !('File' in window) || typeof SparkMD5 === 'undefined') {
 
@@ -115,13 +123,19 @@ var AetherUpload = {
 
             fileReader = new FileReader();
 
+        _this.emitState('hashing', 0);
+
         fileReader.onload = function (e) {
 
             spark.append(e.target.result);
 
             ++currentChunk;
 
-            _this.outputDom.text(_this.messages.status_hashing + ' ' + parseInt(currentChunk / chunks * 100) + '%');
+            var percent = parseInt(currentChunk / chunks * 100);
+
+            _this.outputDom.text(_this.messages.status_hashing + ' ' + percent + '%');
+
+            _this.emitState('hashing', percent);
 
             if (currentChunk < chunks) {
 
@@ -198,6 +212,8 @@ var AetherUpload = {
 
                     _this.outputDom.text(rst.error);
 
+                    _this.emitState('error', rst.error);
+
                     return;
                 }
 
@@ -228,6 +244,8 @@ var AetherUpload = {
 
                     _this.outputDom.text(_this.messages.status_instant_completion_success);
 
+                    _this.emitState('instant', _this.savedPath);
+
                     typeof(_this.callback) !== 'undefined' ? _this.callback() : null;
 
                 }
@@ -236,6 +254,8 @@ var AetherUpload = {
             error: function (XMLHttpRequest, textStatus, errorThrown) {
 
                 _this.outputDom.text(_this.messages.error_upload_fail);
+
+                _this.emitState('error', _this.messages.error_upload_fail);
 
             }
 
@@ -252,6 +272,8 @@ var AetherUpload = {
             end = Math.min(this.resourceSize, start + this.chunkSize),
 
             form = new FormData();
+
+            _this.emitState('uploading', parseInt(this.i / this.chunkCount * 100));
 
         form.append('resource_chunk', this.resource.slice(start, end));
 
@@ -301,12 +323,16 @@ var AetherUpload = {
 
                     _this.outputDom.text(_this.messages.error_invalid_server_return);
 
+                    _this.emitState('error', _this.messages.error_invalid_server_return);
+
                     return;
                 }
 
                 if (rst.error === 'undefined' || rst.error) {
 
                     _this.outputDom.text(rst.error);
+
+                    _this.emitState('error', rst.error);
 
                     return;
 
@@ -318,6 +344,8 @@ var AetherUpload = {
 
                 _this.outputDom.text(_this.messages.status_uploading + ' ' + percent + '%');
 
+                _this.emitState('uploading', percent);
+
                 if (rst.savedPath !== 'undefined' && rst.savedPath !== '') {
 
                     _this.savedPath = rst.savedPath;
@@ -327,6 +355,8 @@ var AetherUpload = {
                     _this.resourceDom.attr('disabled', 'disabled');
 
                     _this.outputDom.text(_this.messages.status_upload_succeed);
+
+                    _this.emitState('success', _this.savedPath);
 
                     _this.progressBarDom.css('width', '100%');
 
@@ -348,6 +378,8 @@ var AetherUpload = {
 
                     _this.outputDom.text(_this.messages.status_retrying);
 
+                    _this.emitState('retry');
+
                     _this.sleep(5000);
 
                     _this.uploadChunk();
@@ -355,6 +387,8 @@ var AetherUpload = {
                 } else {
 
                     _this.outputDom.text(_this.messages.error_upload_fail);
+
+                    _this.emitState('error', _this.messages.error_upload_fail);
 
                 }
             }
@@ -381,6 +415,38 @@ var AetherUpload = {
         this.callback = callback;
 
         return this;
+    },
+
+    emitState: function (state, detail) {
+
+        var wrapper = this.wrapperDom && this.wrapperDom[0];
+
+        if (!wrapper || !wrapper.dispatchEvent) {
+            return;
+        }
+
+        try {
+
+            var event;
+
+            if (typeof window.CustomEvent === 'function') {
+
+                event = new CustomEvent('aetherupload:state', {
+                    bubbles: true,
+                    detail: { state: state, payload: detail }
+                });
+
+            } else {
+
+                event = document.createEvent('CustomEvent');
+                event.initCustomEvent('aetherupload:state', true, true, { state: state, payload: detail });
+            }
+
+            wrapper.dispatchEvent(event);
+
+        } catch (e) {
+            // 状态事件只做界面增强，不能影响上传主流程
+        }
     },
 
     setPreprocessRoute: function (route) {

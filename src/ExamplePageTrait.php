@@ -40,6 +40,12 @@ trait ExamplePageTrait
 
     function getExamplePage()
     {
+        $petBaseUrl = Pet::BASE_URL;
+        $petSmileUrl = Pet::url('smile');
+        $petStateExpressions = json_encode(Pet::stateExpressions(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $petStateLabels = json_encode(Pet::stateLabels(), JSON_UNESCAPED_UNICODE);
+        $petExpressionLabels = json_encode(Pet::expressionLabels(), JSON_UNESCAPED_UNICODE);
+        $petNames = json_encode(Pet::names(), JSON_UNESCAPED_UNICODE);
 
 return <<<EOT
         <!DOCTYPE html>
@@ -56,7 +62,8 @@ return <<<EOT
 
         <div class="container">
             <div class="page-header">
-                <h1><img src="/vendor/aetherupload/js/aetherupload-pet.svg" width="52" alt="" style="vertical-align:-12px;margin-right:10px">This is an example page.</h1>
+                <h1><img id="aetherupload-pet" src="{$petSmileUrl}" width="72" height="72" alt="以太兽" title="点击切换表情" style="vertical-align:-20px;margin-right:10px;cursor:pointer;">This is an example page.</h1>
+                <div id="aetherupload-pet-caption" aria-live="polite" style="font-size:12px;color:#888;margin:-8px 0 8px 0;">以太兽 · 待机（点击切换表情）</div>
                 <i>view the source code in <a href="/aetherupload/example_source" target="_blank">vendor/erikwang2013/aetherupload-webman/views/example.blade.php</a></i>
             </div>
 
@@ -113,6 +120,55 @@ return <<<EOT
         );
         }
 
+        </script>
+
+        <script>
+            // 示例页宠物：上传状态 => 表情形态；点击宠物可循环预览全部 12 种形态。
+            (function () {
+                var pet = document.getElementById('aetherupload-pet');
+                var caption = document.getElementById('aetherupload-pet-caption');
+                if (!pet) {
+                    return;
+                }
+
+                var base = '{$petBaseUrl}';
+                var stateExpressions = {$petStateExpressions};
+                var stateLabels = {$petStateLabels};
+                var expressionLabels = {$petExpressionLabels};
+                var names = {$petNames};
+                var current = 'smile';
+
+                function setPet(expression, label) {
+                    if (!expression) {
+                        return;
+                    }
+
+                    current = expression;
+                    pet.src = base + '/' + expression + '.svg';
+
+                    if (caption) {
+                        caption.textContent = '以太兽 · ' + (label || expressionLabels[expression] || expression);
+                    }
+                }
+
+                document.addEventListener('aetherupload:state', function (event) {
+                    if (!event.detail || !event.detail.state) {
+                        return;
+                    }
+
+                    setPet(
+                        stateExpressions[event.detail.state] || 'smile',
+                        stateLabels[event.detail.state] || ''
+                    );
+                });
+
+                pet.addEventListener('click', function () {
+                    var index = names.indexOf(current);
+                    var next = names[(index + 1) % names.length];
+
+                    setPet(next, expressionLabels[next]);
+                });
+            })();
         </script>
         </body>
         </html>

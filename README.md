@@ -518,6 +518,8 @@ AetherUpload在上传前使用白名单+黑名单的形式进行文件后缀名�
 
 示例页把形态接入为上传状态指示器：待机、计算哈希、上传中、重试、秒传成功、上传成功、上传失败会切换对应形态；点击宠物可循环预览全部 12 种。资源随 `docs/js` 一起发布到 `<文档根>/vendor/aetherupload/js/pet-expressions/`。
 
+代码侧可直接使用 `\AetherUpload\Pet`：`Pet::url('smile')` 返回发布后的资源 URL，`Pet::expressionForState('uploading')` 返回状态对应的形态，`Pet::names()` / `Pet::expressions()` 列出全部形态。
+
 ## 视觉资产授权 / Visual Assets License
 
 本项目的项目宠物、图片、图标、表情（包括 `docs/js/pet-expressions/` 等目录下的

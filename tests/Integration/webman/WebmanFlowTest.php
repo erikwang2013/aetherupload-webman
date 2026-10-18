@@ -45,4 +45,19 @@ class WebmanFlowTest extends TestCase
         return '本机 ' . App::redisHost() . ':' . App::redisPort() . ' 上没有可用的 redis'
             . '（装了 redis 但返回值不对也会走到这里）；第 8 条秒传未验证，其余 7 条不受影响';
     }
+
+    public function testExamplePageServesPetExpressions()
+    {
+        $page = $this->send('GET', '/aetherupload');
+
+        $this->assertSame(200, $page['status']);
+        $this->assertStringContainsString('id="aetherupload-pet"', $page['body']);
+        $this->assertStringContainsString('/vendor/aetherupload/js/pet-expressions/smile.svg', $page['body']);
+        $this->assertStringContainsString('aetherupload:state', $page['body']);
+
+        $asset = $this->send('GET', '/vendor/aetherupload/js/pet-expressions/knocking.svg');
+
+        $this->assertSame(200, $asset['status']);
+        $this->assertStringContainsString('<svg', $asset['body']);
+    }
 }

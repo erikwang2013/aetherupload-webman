@@ -56,4 +56,22 @@ class ExamplePageTraitTest extends TestCase
         $this->assertStringContainsString('aetherupload-resource', $html);
         $this->assertStringContainsString('setPreprocessRoute', $html);
     }
+
+    public function testGetExamplePageIntegratesPetExpressions()
+    {
+        $html = $this->page()->getExamplePage();
+
+        $this->assertStringContainsString('/vendor/aetherupload/js/pet-expressions/smile.svg', $html);
+        $this->assertStringContainsString('id="aetherupload-pet"', $html);
+        $this->assertStringContainsString('aetherupload:state', $html);
+        $this->assertStringContainsString('"uploading":"knocking"', $html);
+    }
+
+    public function testExamplePageSourceShowsPetIntegration()
+    {
+        $source = $this->page()->examplePageSource();
+
+        $this->assertStringContainsString('aetherupload-pet', $source);
+        $this->assertStringContainsString('aetherupload:state', $source);
+    }
 }
