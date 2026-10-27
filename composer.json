@@ -1,6 +1,7 @@
 {
   "name": "erikwang2013/aetherupload-webman",
   "description": "AetherUpload for webman and eight more hosts: chunked large-file upload with resumable transfer, instant upload (秒传) and integrity check. Framework-agnostic kernel with adapters for webman, native PHP, Laravel, ThinkPHP, Symfony, Slim, Hyperf, Yii2 and Yii3. Optional S3-compatible object storage driver (local by default).",
+  "homepage": "https://package.erik.xyz/aetherupload/",
   "type": "library",
   "license": "MIT",
   "minimum-stability": "dev",

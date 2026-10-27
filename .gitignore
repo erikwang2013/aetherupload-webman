@@ -20,3 +20,6 @@ ruvector.db
 
 # Codex local configuration
 .codex/
+
+# Generated static site, deployed separately
+/site/
